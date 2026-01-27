@@ -1,7 +1,6 @@
 import arcade
 import base_classes as bc
 
-
 class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
