@@ -86,7 +86,6 @@ class Entity:
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
         self.color = color
-        self.sounds = SoundPlayer()
     
     def update(self, dt: float):
         self.pos += self.velocity*dt
@@ -102,8 +101,10 @@ class Entity:
 
     def update_vel(self, vel: Vec2, max_vel: float= 1.0):
         nv = self.velocity + vel
-        if math.sqrt(nv.x**2+nv.y**2) <= max_vel:
-            self.velocity = nv
+        if math.sqrt(nv.x**2+nv.y**2) > max_vel:
+            nv *= max_vel / math.sqrt(nv.x**2+nv.y**2)
+        self.velocity = nv
+
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))
     def to_json(self):
