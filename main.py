@@ -59,6 +59,11 @@ class WearponData:
     size: Vec2
     lifetime: float
     
+class Wall(bc.Entity):
+    def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
+        super().__init__(pos, size, (100, 100, 100))
+        
+
 
 class Wearpon:
     def __init__(self, parent: bc.Entity):
