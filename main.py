@@ -61,7 +61,7 @@ class WearponData:
 class Wearpon:
     def __init__(self, parent: bc.Entity):
         self.parent = parent
-        self.sprite = arcade.SpriteSolidColor(20, 5, 0, 0, arcade.color.GRAY)
+        self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
         bc.sprite_all_draw.append(self.sprite)
         self.update(0)
 
@@ -159,15 +159,17 @@ class Window(arcade.Window):
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
 
+    def all_draw(self):
+        bc.sprite_all_draw.draw()
+
     def on_draw(self):
         self.clear()
-        self.bloom.fbo.use()
+        # self.bloom.fbo.use()
         self.bloom.fbo.clear()
-        with self.bloom.fbo: 
-            bc.sprite_all_draw.draw()
-
-        self.ctx.screen.use()
-        self.bloom.draw(0, self.ctx.screen)
+        # with self.bloom.fbo: 
+        self.all_draw()
+        # self.ctx.screen.use()
+        # self.bloom.draw(0, self.ctx.screen)
 
     def on_update(self, dt: float):
         self.player.update(dt)
