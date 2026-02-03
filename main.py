@@ -22,6 +22,7 @@ class Bullet(bc.Entity):
         angle = math.radians(-angle-90)
         self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
         self.lifetime = 0
+
     def get_nearest_enemy(self, enemies):
         min_dist_sq = float("inf")
         e = None
@@ -35,6 +36,7 @@ class Bullet(bc.Entity):
                 min_dist_sq = dist_sq
                 e = enemy 
         return e
+
     def update(self, dt, enemies: list):
         self.lifetime+=dt
         super().update(dt)
@@ -63,6 +65,15 @@ class Wearpon:
         self.parent = parent
         self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
         bc.sprite_all_draw.append(self.sprite)
+        self.prop = WearponData(
+            reload= 1.0,
+            damage= 15.0,
+            spread= 15.0,
+            size= Vec2(5, 10),
+            lifetime= 5.0
+        )
+        self.last_shot = 0
+        self.bullets = []
         self.update(0)
 
     def update(self, dt):
@@ -72,43 +83,46 @@ class Wearpon:
         self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
         self.angle = self.sprite.angle-90
 
+        for bullet in self.bullets:
+            bullet.update(dt, [])
+            if bullet.lifetime > self.prop.lifetime:
+                bullet.die()
+                self.bullets.remove(bullet)
+
+
+    def shoot(self):
+        if time.time() - self.last_shot >= self.prop.reload:
+            self.bullets.append(
+                Bullet(
+                    pos= self.pos,
+                    size= self.prop.size,
+                    vel= 1000,
+                    angle= self.angle + random.uniform(-self.prop.spread/2, self.prop.spread/2)+90,
+                    damage= self.prop.damage,
+                    owner= self
+                )
+            )
+            self.last_shot = time.time()
+
     def die(self):
         bc.sprite_all_draw.remove(self.sprite)
+        for bullet in self.bullets:
+            bullet.die()
 
 class Pistol(Wearpon):
     def __init__(self, parent):
         self.bullets = []
         super().__init__(parent)
-        self.shot_data = WearponData(
+        self.prop = WearponData(
             reload= 1.0,
             damage= 15.0,
             spread= 15.0,
             size= Vec2(5, 10),
             lifetime= 5.0
         )
-        self.last_shot = 0 
     def update(self, dt):
         super().update(dt)
-        for bullet in self.bullets:
-            bullet.update(dt, [])
-            if bullet.lifetime > self.shot_data.lifetime:
-                bullet.die()
-                self.bullets.remove(bullet)
-        
 
-    def shoot(self):
-        if time.time() - self.last_shot >= self.shot_data.reload:
-            self.bullets.append(
-                Bullet(
-                    pos= self.pos,
-                    size= self.shot_data.size,
-                    vel= 1000,
-                    angle= self.angle + random.uniform(-self.shot_data.spread/2, self.shot_data.spread/2)+90,
-                    damage= self.shot_data.damage,
-                    owner= self
-                )
-            )
-            self.last_shot = time.time()
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
