@@ -6,6 +6,7 @@ import arcade.gl
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
 
+pymunk = arcade.PymunkPhysicsEngine(gravity= (0, 0), damping= 1.0)
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
         self.x = x
@@ -78,19 +79,20 @@ class Rect:
         self.quad.render(self.prog)
 
 class Entity:
-    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float]):
+    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], mass= 50):
         self.pos = pos
         self.size = size
         self.angle = 0
         self.rect: arcade.Sprite = arcade.SpriteSolidColor(self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
+        self.mass = mass
         self.color = color
+        pymunk.add_sprite(self.rect, self.mass, 1, gravity= (0, 0), max_velocity=6000)
     
     def update(self, dt: float):
-        self.pos += self.velocity*dt
-        self.rect.center_x= self.pos.x
-        self.rect.center_y= self.pos.y
+        # self.rect.center_x= self.pos.x
+        # self.rect.center_y= self.pos.y
         self.rect.angle = self.angle
     
     def die(self):
@@ -98,12 +100,12 @@ class Entity:
             self.rect.center_y = -1000
             self.rect.center_x = -1000
             sprite_all_draw.remove(self.rect)
-
-    def update_vel(self, vel: Vec2, max_vel: float= 1.0):
-        nv = self.velocity + vel
-        if math.sqrt(nv.x**2+nv.y**2) > max_vel:
-            nv *= max_vel / math.sqrt(nv.x**2+nv.y**2)
-        self.velocity = nv
+        if self.rect in pymunk.sprites:
+            pymunk.remove_sprite(self.rect)
+    def accelerate(self, acc: Vec2):
+        pymunk.apply_force(self.rect, (acc*self.mass).__list__())
+    def update_vel(self, vel: Vec2):
+        pymunk.set_velocity(self.rect, vel.__list__())
 
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))

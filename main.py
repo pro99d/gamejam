@@ -14,7 +14,8 @@ class Bullet(bc.Entity):
         super().__init__(
             pos= pos,
             size= size,
-            color= color
+            color= color,
+            mass= 0.09
         )
         self.owner = owner
         self.damage = damage
@@ -22,6 +23,7 @@ class Bullet(bc.Entity):
         angle = math.radians(-angle-90)
         self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
         self.lifetime = 0
+        bc.pymunk.apply_impulse(self.rect, (self.velocity*self.mass).__list__())
 
     def get_nearest_enemy(self, enemies):
         min_dist_sq = float("inf")
@@ -51,6 +53,9 @@ class Bullet(bc.Entity):
                     hit = True
         return hit
 
+class Wall(bc.Entity):
+    pass
+
 @dataclass
 class WearponData:
     reload: float
@@ -61,7 +66,7 @@ class WearponData:
     
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100))
+        super().__init__(pos, size, (100, 100, 100), 1e4)
         
 
 
@@ -84,7 +89,7 @@ class Wearpon:
     def update(self, dt):
         self.sprite.center_x = self.parent.rect.center_x
         self.sprite.center_y = self.parent.rect.center_y
-        self.sprite.angle = self.parent.rect.angle
+        self.sprite.angle = self.parent.angle
         self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
         self.angle = self.sprite.angle-90
 
@@ -137,17 +142,18 @@ class Player(bc.Entity):
 
     def set_angle(self, mouse_pos: Vec2):
 
-        dp = self.pos-mouse_pos
+        dp = self.pos -mouse_pos
         if dp.y:
             self.angle = math.degrees(math.atan2(dp.x, dp.y))
         else:
-            self.angle = 180
+            self.angle = 90
 
 
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 100
+        self.pos = Vec2(self.rect.position[0], self.rect.position[1])
+        acc = 600
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -156,7 +162,7 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        self.update_vel(dv, 600)
+        self.update_vel(dv)
         #update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
@@ -187,10 +193,11 @@ class Window(arcade.Window):
         self.bloom.fbo.clear()
         # with self.bloom.fbo: 
         self.all_draw()
-        # self.ctx.screen.use()
+        self.ctx.screen.use()
         # self.bloom.draw(0, self.ctx.screen)
 
     def on_update(self, dt: float):
+        bc.pymunk.step(1/60)
         self.player.update(dt)
         self.player.set_angle(self.mouse_pos)
 
