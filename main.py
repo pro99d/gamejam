@@ -66,9 +66,9 @@ class WearponData:
     
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), 1e4)
+        super().__init__(pos, size, (100, 100, 100), 1e40)
         
-
+l1 = [Vec2(100, 200), Vec2(200, 200)]
 
 class Wearpon:
     def __init__(self, parent: bc.Entity):
@@ -152,7 +152,6 @@ class Player(bc.Entity):
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        self.pos = Vec2(self.rect.position[0], self.rect.position[1])
         acc = 600
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
@@ -180,6 +179,7 @@ class Window(arcade.Window):
         self.bloom = arcade.experimental.BloomFilter(self.width, self.height, 20)
         self.player = Player(Vec2(200, 200)) 
         self.mouse_pos = Vec2(1, 1)
+        self.walls = [Wall(Vec2(i.x, i.y)) for i in l1]
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)

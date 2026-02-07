@@ -1,3 +1,4 @@
+from PIL.Image import new
 import math
 import json
 import arcade
@@ -93,6 +94,7 @@ class Entity:
     def update(self, dt: float):
         # self.rect.center_x= self.pos.x
         # self.rect.center_y= self.pos.y
+        self.pos = Vec2(self.rect.position[0], self.rect.position[1])
         self.rect.angle = self.angle
     
     def die(self):
@@ -105,7 +107,14 @@ class Entity:
     def accelerate(self, acc: Vec2):
         pymunk.apply_force(self.rect, (acc*self.mass).__list__())
     def update_vel(self, vel: Vec2):
-        pymunk.set_velocity(self.rect, vel.__list__())
+        phys = pymunk.get_physics_object(self.rect)
+        velocity = phys.body.velocity
+        velocity = Vec2(velocity.x, velocity.y)
+        mass = phys.body.mass 
+        impulse = velocity*mass*-1
+        pymunk.apply_impulse(self.rect, impulse.__list__())
+        new_imp = vel*mass
+        pymunk.apply_impulse(self.rect, new_imp.__list__())
 
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))
