@@ -53,9 +53,6 @@ class Bullet(bc.Entity):
                     hit = True
         return hit
 
-class Wall(bc.Entity):
-    pass
-
 @dataclass
 class WearponData:
     reload: float
@@ -66,7 +63,8 @@ class WearponData:
     
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), 1e40)
+        super().__init__(pos, size, (100, 100, 100), collision_type= arcade.PymunkPhysicsEngine.STATIC)
+
         
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
@@ -119,19 +117,6 @@ class Wearpon:
         for bullet in self.bullets:
             bullet.die()
 
-class Pistol(Wearpon):
-    def __init__(self, parent):
-        self.bullets = []
-        super().__init__(parent)
-        self.prop = WearponData(
-            reload= 1.0,
-            damage= 15.0,
-            spread= 15.0,
-            size= Vec2(5, 10),
-            lifetime= 5.0
-        )
-    def update(self, dt):
-        super().update(dt)
 
 
 class Player(bc.Entity):
