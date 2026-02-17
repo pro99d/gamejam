@@ -16,25 +16,23 @@ def distance_point_to_line(P: Vec2, A: Vec2, B: Vec2) -> float:
 class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
-        self.pos = Vec2(200, 200) 
-        self.vel = Vec2(100, 100)
+        self.pos = Vec2(200, 400) 
+        self.vel = Vec2(100, -50)
         self.r = 25    
         self.a = Vec2(500, 350)
         self.b = Vec2(180, 350)
-        self.norm = Vec2(0, -1)
+        dp = self.a-self.b
+        self.norm = dp.normalize().rotate(math.radians(-90))
     
     def collide(self):
-        norm90 = pass
-        angle = -self.vel.angle(Vec2(1, 0)) - self.norm.angle(Vec2(1, 0))
-        
-        d = math.degrees(angle)
-        print(d)
-        cos = math.cos(angle)
-        sin = math.sin(angle)
-        print(math.degrees(self.vel.angle(Vec2(1, 0))))
-        self.vel.x = self.vel.x * cos + self.vel.y * sin
-        self.vel.y = self.vel.x * cos - self.vel.y * sin
-        print(math.degrees(self.vel.angle(Vec2(1, 0))))
+        # norm90 = self.norm.rotate(math.radians(90)).normalize()
+        print(self.norm)
+        # angle = self.norm.angle(self.vel)
+        # new = norm90.rotate()
+        # new = new.normalize()
+        print(self.vel)
+        self.vel += 2*self.norm* self.vel
+        print(self.vel)
 
     def on_draw(self):
         self.clear()

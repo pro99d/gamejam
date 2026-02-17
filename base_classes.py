@@ -22,6 +22,19 @@ class Vec2:
             return Vec2(self.x+other, self.y+other)
     def magnitude(self):
         return math.sqrt(self.x**2+self.y**2)
+    def rotate(self, angle):
+        sin = math.sin(angle)
+        cos = math.cos(angle)
+        x = round(self.x*cos - self.y * sin, 15)
+        y = round(self.x*sin + self.y * cos, 15)
+        return Vec2(x, y)
+
+    def normalize(self):
+        mag = self.magnitude()
+        x = self.x / mag
+        y = self.y / mag
+        return Vec2(x, y)
+
     def angle(self, other):
         if isinstance(other, Vec2):
             return math.acos(self.dot(other)/(self.magnitude()*other.magnitude()))
@@ -67,8 +80,6 @@ class Rect:
     def update_pos(self, pos: Vec2):
         self.quad = arcade.gl.geometry.quad_2d(
             size=(self.size.x, self.size.y), pos=(pos.x, pos.y))
-
-        # self.prog['rotation_matrix'] = rotation_matrix
 
     def update_program(self):
         self.prog = self.ctx.program(
