@@ -1,6 +1,8 @@
 from base_classes import Vec2
 import math
 import arcade
+from base_classes import Entity
+
 fl = Falsfl = False
 def distance_point_to_line(P: Vec2, A: Vec2, B: Vec2) -> float:
     AB = B - A
@@ -12,6 +14,23 @@ def distance_point_to_line(P: Vec2, A: Vec2, B: Vec2) -> float:
     projection_point = A + AB * (projection_length / AB_magnitude)
     res =  (P - projection_point)
     return math.sqrt(res.x**2 + res.y ** 2)
+
+class Line:
+    def __init__(self, a: Vec2, b: Vec2):
+        self.a = a
+        self.b = b
+        dp = a-b
+        self.norm = dp.normalize().rotate(math.radians(-90))
+
+class PhysEntity(Entity):
+    def __init__(self, pos: Vec2, size: Vec2):
+        super().__init__(pos= pos, size= size, color= arcade.color.RED)
+
+class Engine:
+    def __init__(self, k: float):
+        self.k = k
+        self.entities: list[Entity] = []
+
 
 class Window(arcade.Window):
     def __init__(self):
