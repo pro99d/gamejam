@@ -20,7 +20,14 @@ class Vec2:
             return Vec2(self.x+other.x, self.y+other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x+other, self.y+other)
-
+    def magnitude(self):
+        return math.sqrt(self.x**2+self.y**2)
+    def angle(self, other):
+        if isinstance(other, Vec2):
+            return math.acos(self.dot(other)/(self.magnitude()*other.magnitude()))
+    def dot(self, other):
+        if isinstance(other, Vec2):
+            return self.x*other.x + self.y * other.y
     def __sub__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x-other.x, self.y-other.y)
@@ -35,6 +42,8 @@ class Vec2:
         return f"Vec2(x= {self.x}, y= {self.y})"
     def __list__(self):
         return [self.x, self.y]
+    __rmul__ = __mul__
+    __radd__ = __add__
 
 class Rect:
     def __init__(self, pos: Vec2, size: Vec2, ctx):
