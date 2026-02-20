@@ -139,6 +139,7 @@ class Player(bc.Entity):
         super().__init__(pos, Vec2(50, 50), (0, 255, 0))
         self.keys = set() 
         self.pistol = Pistol(self)
+        self.health = 50
 
     def set_angle(self, mouse_pos: Vec2):
 
