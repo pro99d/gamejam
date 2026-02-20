@@ -15,12 +15,12 @@ class WearponData:
     spread: float
     size: Vec2
     lifetime: float
-    
+
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
         super().__init__(pos, size, (100, 100, 100), collision_type= arcade.PymunkPhysicsEngine.STATIC)
 
-        
+
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
 class Wearpon:
@@ -30,7 +30,7 @@ class Wearpon:
         self.bul_count_now = self.prop.bullet_count
         bc.sprite_all_draw.append(self.sprite)
         self.prop = WearponData(
-            bullet_count = 6
+            bullet_count = 6,
             reload= 0.1,
             damage= 15.0,
             spread= 15.0,
@@ -59,7 +59,7 @@ class Wearpon:
         if (time.time() - self.last_shot >= self.prop.reload) and (self.bul_count_now > 0 or  time.time() - self.last_shot >= self.prop.reload_time):
             self.bullets.append(
                 Bullet(
-                    
+
                     pos= self.pos,
                     size= self.prop.size,
                     vel= 1000,
@@ -70,8 +70,8 @@ class Wearpon:
             )
             self.last_shot = time.time()
             self.bul_count_now -= 1
-        elif self.bul_count_now == 0 and time.time() - self.last_shot >:
-            
+
+
     def die(self):
         bc.sprite_all_draw.remove(self.sprite)
         for bullet in self.bullets:
@@ -83,14 +83,13 @@ class Pistol(Wearpon):
         super().__init__(parent)
         self.prop = WearponData(
             reload_time = 1.5,
-            bullet_count = 6,
+            bullet_count = 12,
             reload= 0.3,
             damage= 15.0,
             spread= 15.0,
             size= Vec2(5, 10),
             lifetime= 5.0
         )
-    
     def update(self, dt):
         super().update(dt)
 
@@ -100,6 +99,7 @@ class riffle(Wearpon):
         self.bullets = []
         self.prod = WearponData(
             reload_time=2,
+            bullet_count = 5,
             reload = 0.6,
             damage = 35.0,
             spread = 3.0,
@@ -108,4 +108,72 @@ class riffle(Wearpon):
         )
     def update(self, dt):
         super().update(dt)
+
+class machine_pistols(Wearpon):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.bullets = []
+        self.prop = WearponData(
+            reload_time=3,
+            bullet_count=60,
+            reload = 0.08,
+            damage = 5,
+            spread = 20,
+            size = Vec2(3,7),
+            lifetime = 4.0,
+        )
+    for _ in range(2):
+        super().shoot()
         
+    def update(self, dt):
+        super().update(dt)
+
+class shotgun(Wearpon):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.bullets = []
+        self.prop = WearponData(
+            reload_time=3,
+            bullet_count=5,
+            reload = 0.5,
+            damage = 8,
+            spread = 20,
+            size = Vec2(3,7),
+            lifetime = 4.0,
+        )
+    for _ in range(6):
+        super().shoot()
+    def update(self, dt):
+        super().update(dt)
+        
+class crossbow(Wearpon):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.bullets = []
+        self.prop = WearponData(
+            reload_time=1.5,
+            bullet_count=1,
+            reload = 1.5,
+            damage = 60,
+            spread = 0.01,
+            size = Vec2(4,12),
+            lifetime = 20.0,
+        )
+    def update(self, dt):
+        super().update(dt)
+
+class sniper_riffle(Wearpon):
+    def __init__(self,parent):
+        super().__init__(parent)
+        self.bullets = []
+        self.prop = WearponData(
+            reload_time=2.0,
+            bullet_count=1,
+            reload = 2.0,
+            damage = 80,
+            spread = 0.001,
+            size = Vec2(3,10),
+            lifetime = 20.0,
+        )
+    def update(self, dt):
+        super().update(dt)    
