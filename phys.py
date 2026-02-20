@@ -2,6 +2,7 @@ from base_classes import Vec2
 import math
 import arcade
 from base_classes import Entity
+from dataclasses import dataclass
 
 fl = Falsfl = False
 def distance_point_to_line(P: Vec2, A: Vec2, B: Vec2) -> float:
@@ -20,16 +21,57 @@ class Line:
         self.a = a
         self.b = b
         dp = a-b
-        self.norm = dp.normalize().rotate(math.radians(-90))
+        self.norm = dp.normalize().rotate(1.5707)
 
-class PhysEntity(Entity):
-    def __init__(self, pos: Vec2, size: Vec2):
-        super().__init__(pos= pos, size= size, color= arcade.color.RED)
+@dataclass
+class Hitbox:
+    points: list[Vec2]
+    def _is_collide(self, p: Vec2, r: float):
+        for i in range(len(self.points)-1):
+            a = self.points[i]
+            b = self.points[i+1]
+            ab = b - a
+            ap = p - a
+            ab_mag = ab.magnitude()
+            if ab_mag == 0:
+                if ap.magnitude()**2 <= r:
+                    dp = a-b
+                    return dp.normalize().rotate(1.5707)
+            projection_length = (ap.x * ab.x + ap.y * ab.y) / ab_mag 
+            projection_point = a + ab * (projection_length / ab_mag)
+            res =  (p - projection_point)
+            if res.x**2 + res.y ** 2 <= r:
+                dp = a-b
+                return dp.normalize().rotate(math.radians(90))
+        return False
+
 
 class Engine:
     def __init__(self, k: float):
         self.k = k
         self.entities: list[Entity] = []
+        self.hitboxes: list[Hitbox] = []
+
+    def remove_ent(self, entity: Entity):
+        if entity in self.entities:
+            self.entities.remove(entity)
+
+    def add_hitbox(self, hitbox: Hitbox):
+        self.hitboxes.append(hitbox)
+
+    def add_ent(self, entity: Entity):
+        self.entities.append(entity)
+        entity.die_calls.append(self.remove_ent)
+
+    def update(self, dt: float):
+        for hitbox in self.hitboxes:
+            for entity in self.entities:
+                norm = hitbox._is_collide(entity.pos, entity.radius)
+                if norm:
+                    entity.velocity += self.k * norm * entity.velocity
+                
+        for entity in self.entities:
+            entity.update(dt)
 
 
 class Window(arcade.Window):
@@ -41,7 +83,7 @@ class Window(arcade.Window):
         self.a = Vec2(500, 350)
         self.b = Vec2(180, 350)
         dp = self.a-self.b
-        self.norm = dp.normalize().rotate(math.radians(-90))
+        self.norm = dp.normalize().rotate(math.radians(90))
     
     def collide(self):
         # norm90 = self.norm.rotate(math.radians(90)).normalize()

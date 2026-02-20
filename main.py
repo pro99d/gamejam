@@ -5,6 +5,7 @@ from base_classes import Vec2
 import time
 import math
 import random
+import phys
 
 enemies = []
 
@@ -23,7 +24,6 @@ class Bullet(bc.Entity):
         angle = math.radians(-angle-90)
         self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
         self.lifetime = 0
-        bc.pymunk.apply_impulse(self.rect, (self.velocity*self.mass).__list__())
 
     def get_nearest_enemy(self, enemies):
         min_dist_sq = float("inf")
@@ -53,9 +53,6 @@ class Bullet(bc.Entity):
                     hit = True
         return hit
 
-class Wall(bc.Entity):
-    pass
-
 @dataclass
 class WearponData:
     reload: float
@@ -66,7 +63,13 @@ class WearponData:
     
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), 1e40)
+        super().__init__(pos, size, (100, 100, 100))
+        print(size)
+        a = size.__div__(2)
+        b = size.__div__(-2)
+        c = Vec2(size.x/2, size.y/-2)
+        d = Vec2(size.x/-2, size.y/2)
+        self.hitbox = phys.Hitbox([a, b, c, d])
         
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
@@ -153,7 +156,7 @@ class Player(bc.Entity):
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 600
+        acc = 60
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -162,7 +165,7 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        self.update_vel(dv)
+        self.velocity += dv
         #update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
@@ -178,9 +181,13 @@ class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
         self.bloom = arcade.experimental.BloomFilter(self.width, self.height, 20)
-        self.player = Player(Vec2(200, 200)) 
+        self.player = Player(Vec2(200, 400)) 
         self.mouse_pos = Vec2(1, 1)
         self.walls = [Wall(Vec2(i.x, i.y)) for i in l1]
+        self.physics_engine: phys.Engine = phys.Engine(2)
+        self.physics_engine.add_ent(self.player)
+        for wall in self.walls:
+            self.physics_engine.add_hitbox(wall.hitbox)    
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
@@ -198,8 +205,8 @@ class Window(arcade.Window):
         # self.bloom.draw(0, self.ctx.screen)
 
     def on_update(self, dt: float):
-        bc.pymunk.step(1/60)
-        self.player.update(dt)
+        self.physics_engine.update(dt)
+        # self.player.update(dt)
         self.player.set_angle(self.mouse_pos)
 
     def on_key_press(self, key, *_):

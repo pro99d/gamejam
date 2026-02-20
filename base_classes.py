@@ -45,6 +45,14 @@ class Vec2:
             return Vec2(self.x-other.x, self.y-other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x-other, self.y-other)
+    def __rdiv__(self, other):
+        if type(other) in [int, float]:
+            return Vec2(other/self.x, other/self.y)
+    def __div__(self, other):
+        if isinstance(other, Vec2):
+            return Vec2(self.x/other.x, self.y/other.y)
+        elif type(other) in [int, float]:
+            return Vec2(self.x/other, self.y/other)
     def __mul__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x*other.x, self.y*other.y)
@@ -99,16 +107,15 @@ class Rect:
         self.quad.render(self.prog)
 
 class Entity:
-    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], mass= 50):
+    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float]):
         self.pos = pos
         self.size = size
         self.angle = 0
         self.rect: arcade.Sprite = arcade.SpriteSolidColor(self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
-        self.mass = mass
         self.color = color
-        self.radius = size.magnitude()/2
+        self.radius = size.magnitude()
         self.radius * self.radius
         self.die_calls = []
 
