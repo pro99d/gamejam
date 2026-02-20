@@ -68,63 +68,19 @@ class Wall(bc.Entity):
         
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
-class Wearpon:
-    def __init__(self, parent: bc.Entity):
-        self.parent = parent
-        self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
-        bc.sprite_all_draw.append(self.sprite)
-        self.prop = WearponData(
-            reload= 1.0,
-            damage= 15.0,
-            spread= 15.0,
-            size= Vec2(5, 10),
-            lifetime= 5.0
-        )
-        self.last_shot = 0
-        self.bullets = []
-        self.update(0)
-
-    def update(self, dt):
-        self.sprite.center_x = self.parent.rect.center_x
-        self.sprite.center_y = self.parent.rect.center_y
-        self.sprite.angle = self.parent.angle
-        self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
-        self.angle = self.sprite.angle-90
-
-        for bullet in self.bullets:
-            bullet.update(dt, [])
-            if bullet.lifetime > self.prop.lifetime:
-                bullet.die()
-                self.bullets.remove(bullet)
-
-
-    def shoot(self):
-        if time.time() - self.last_shot >= self.prop.reload:
-            self.bullets.append(
-                Bullet(
-                    pos= self.pos,
-                    size= self.prop.size,
-                    vel= 1000,
-                    angle= self.angle + random.uniform(-self.prop.spread/2, self.prop.spread/2)+90,
-                    damage= self.prop.damage,
-                    owner= self
-                )
-            )
-            self.last_shot = time.time()
-
-    def die(self):
-        bc.sprite_all_draw.remove(self.sprite)
-        for bullet in self.bullets:
-            bullet.die()
-
-
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
         super().__init__(pos, Vec2(50, 50), (0, 255, 0))
-        self.keys = set() 
+        self.keys = set()
         self.pistol = Pistol(self)
-
+        self.riffle = riffle(self)
+        self.shotgun = shotgun(self)
+        self.crossbow = crossbow(self)
+        self.sniper_riffle = sniper_riffle(self)
+        self.machine_pistols = machine_pistols(self)
+        self.weapon_number = weapon_number
+        self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
     def set_angle(self, mouse_pos: Vec2):
 
         dp = self.pos -mouse_pos
@@ -133,7 +89,7 @@ class Player(bc.Entity):
         else:
             self.angle = 90
 
-
+    weapon_number = 1
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
@@ -146,18 +102,29 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
+        if arcade.key.KEY_1 in self.keys:
+            weapon_number = 1
+        if arcade.key.KEY_2 in self.keys:
+            weapon_number = 2
+        if arcade.key.KEY_3 in self.keys:
+            weapon_number = 3
+        if arcade.key.KEY_4 in self.keys:
+            weapon_number = 4
+        if arcade.key.KEY_5 in self.keys:
+            weapon_number = 5
+        if arcade.key.KEY_6 in self.keys:
+            weapon_number = 6
         self.update_vel(dv)
         #update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
-            self.pistol.shoot()
+            self.globals()[weapon_list[weapon_number]].shoot()
 
         return super().update(dt)
     def on_key_press(self, key):
         self.keys.add(key)
     def on_key_release(self, key):
         self.keys.remove(key)
-
 class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
@@ -203,3 +170,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
