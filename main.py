@@ -10,23 +10,25 @@ import phys
 enemies = []
 physics_engine: phys.Engine = phys.Engine()
 
+
 class Bullet(bc.Entity):
-    def __init__(self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner):
+    def __init__(
+        self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner
+    ):
         color = (235, 155, 90)
         super().__init__(
-            pos= pos,
-            size= size,
-            color= color,
+            pos=pos,
+            size=size,
+            color=color,
         )
         self.owner = owner
         self.damage = damage
         self.angle = angle
-        angle = math.radians(-angle-90)
-        self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
+        angle = math.radians(-angle - 90)
+        self.velocity = Vec2(math.cos(angle) * vel, math.sin(angle) * vel)
         self.lifetime = 0
         physics_engine.add_ent(self)
         self.on_collide_events.append(self.die)
-
 
     def get_nearest_enemy(self, enemies):
         min_dist_sq = float("inf")
@@ -36,14 +38,14 @@ class Bullet(bc.Entity):
                 continue
             dx = self.pos.x - enemy.pos.x
             dy = self.pos.y - enemy.pos.y
-            dist_sq = dx*dx+dy*dy
-            if  dist_sq <= min_dist_sq:
+            dist_sq = dx * dx + dy * dy
+            if dist_sq <= min_dist_sq:
                 min_dist_sq = dist_sq
-                e = enemy 
+                e = enemy
         return e
 
     def update(self, dt):
-        self.lifetime+=dt
+        self.lifetime += dt
         super().update(dt)
         hit = False
         en = self.get_nearest_enemy(enemies)
@@ -54,6 +56,7 @@ class Bullet(bc.Entity):
                     hit = True
         return hit
 
+
 @dataclass
 class WearponData:
     reload: float
@@ -61,23 +64,26 @@ class WearponData:
     spread: float
     size: Vec2
     lifetime: float
-    
+
+
 class Wall(bc.Entity):
-    def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
+    def __init__(self, pos: Vec2, size: Vec2 = Vec2(50, 50)):
         super().__init__(pos, size, (100, 100, 100))
         a = size.__div__(2)
         b = size.__div__(-2)
-        c = Vec2(size.x/2, size.y/-2)
-        d = Vec2(size.x/-2, size.y/2)
+        c = Vec2(size.x / 2, size.y / -2)
+        d = Vec2(size.x / -2, size.y / 2)
         p = self.pos
-        self.hitbox = phys.Hitbox([p+ a, p+c, p+b, p+d])
+        self.hitbox = phys.Hitbox([p + a, p + c, p + b, p + d])
+
     def draw_hitbox(self):
         hp = [(p.x, p.y) for p in self.hitbox.points]
         arcade.draw_line_strip(hp, arcade.color.RED, 3)
         arcade.draw_line_strip((hp[0], hp[-1]), arcade.color.RED, 3)
-         
-        
+
+
 l1 = [Vec2(100, 200), Vec2(200, 200)]
+
 
 class Wearpon:
     def __init__(self, parent: bc.Entity):
@@ -85,11 +91,7 @@ class Wearpon:
         self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
         bc.sprite_all_draw.append(self.sprite)
         self.prop = WearponData(
-            reload= 1.0,
-            damage= 15.0,
-            spread= 15.0,
-            size= Vec2(5, 10),
-            lifetime= 5.0
+            reload=1.0, damage=15.0, spread=15.0, size=Vec2(5, 10), lifetime=5.0
         )
         self.last_shot = 0
         self.bullets = []
@@ -100,7 +102,7 @@ class Wearpon:
         self.sprite.center_y = self.parent.rect.center_y
         self.sprite.angle = self.parent.angle
         self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
-        self.angle = self.sprite.angle-90
+        self.angle = self.sprite.angle - 90
 
         for bullet in self.bullets:
             # bullet.update(dt, [])
@@ -108,17 +110,19 @@ class Wearpon:
                 bullet.die()
                 self.bullets.remove(bullet)
 
-
     def shoot(self):
         if time.time() - self.last_shot >= self.prop.reload:
             self.bullets.append(
                 Bullet(
-                    pos= self.pos,
-                    size= self.prop.size,
-                    vel= 1000,
-                    angle= self.angle + random.uniform(-self.prop.spread/2, self.prop.spread/2)+90,
-                    damage= self.prop.damage,
-                    owner= self
+                    pos=self.pos,
+                    size=self.prop.size,
+                    vel=1000,
+                    angle=self.angle
+                    + random.uniform(-self.prop.spread / 2,
+                                     self.prop.spread / 2)
+                    + 90,
+                    damage=self.prop.damage,
+                    owner=self,
                 )
             )
             self.last_shot = time.time()
@@ -128,37 +132,57 @@ class Wearpon:
         for bullet in self.bullets:
             bullet.die()
 
+
 class Pistol(Wearpon):
     def __init__(self, parent):
         self.bullets = []
         super().__init__(parent)
         self.prop = WearponData(
-            reload= 0.1,
-            damage= 15.0,
-            spread= 15.0,
-            size= Vec2(5, 10),
-            lifetime= 5.0
+            reload=0.1, damage=15.0, spread=15.0, size=Vec2(5, 10), lifetime=5.0
         )
+
     def update(self, dt):
         super().update(dt)
+
+
+class Enemy(bc.Entity):
+    def __init__(self, pos: Vec2, target: bc.Entity):
+        super().__init__(pos, Vec2(50, 50), (255, 0, 0))
+        self.target = target
+
+    def update(self, dt):
+        super().update(dt)
+
+        dp = self.pos - self.target.pos
+        if dp.y:
+            self.angle = math.degrees(math.atan2(dp.x, dp.y))
+        else:
+            if dp.x > 0:
+                self.angle = 90
+            else:
+                self.angle = 180
+        speed = 100
+        self.velocity = dp.normalize()*-speed
 
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
         super().__init__(pos, Vec2(50, 50), (0, 255, 0))
-        self.keys = set() 
+        self.keys = set()
         self.pistol = Pistol(self)
         self.health = 50
         physics_engine.add_ent(self)
 
     def set_angle(self, mouse_pos: Vec2):
 
-        dp = self.pos -mouse_pos
+        dp = self.pos - mouse_pos
         if dp.y:
             self.angle = math.degrees(math.atan2(dp.x, dp.y))
         else:
-            self.angle = 90
-
+            if dp.x > 0:
+                self.angle = 90
+            else:
+                self.angle = 180
 
     def update(self, dt: float):
         self.velocity *= 0.90
@@ -172,32 +196,36 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        if self.velocity.magnitude() < acc*10:
+        if self.velocity.magnitude() < acc * 10:
             self.velocity += dv
-        #update all childs
+        # update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
             self.pistol.shoot()
 
         return super().update(dt)
+
     def on_key_press(self, key):
         self.keys.add(key)
+
     def on_key_release(self, key):
         self.keys.remove(key)
+
 
 class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
-        self.bloom = arcade.experimental.BloomFilter(self.width, self.height, 20)
-        self.player = Player(Vec2(400, 400)) 
+        self.bloom = arcade.experimental.BloomFilter(
+            self.width, self.height, 20)
+        self.player = Player(Vec2(400, 400))
         self.mouse_pos = Vec2(1, 1)
         self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
         for wall in self.walls:
-            physics_engine.add_hitbox(wall.hitbox)    
+            physics_engine.add_hitbox(wall.hitbox)
 
-        self.init_pixelaion_shader() 
-    
+        self.init_pixelaion_shader()
+
     def init_pixelaion_shader(self):
         self.quad_fs = arcade.gl.geometry.quad_2d_fs()
         # Create texture and FBO
@@ -206,28 +234,27 @@ class Window(arcade.Window):
         # Put something in the framebuffer to start
         self.pix_fbo.clear(color=arcade.color.ALMOND)
 
-
         with open("shaders/pixelation.glsl") as f:
             frag = f.read()
         self.pixelation = self.ctx.program(
-                vertex_shader="""
+            vertex_shader="""
                 #version 330
                 in vec2 in_vert;
                 void main(){
                     gl_Position = vec4(in_vert, 0., 1.);
                 }
                 """,
-                fragment_shader= frag
-                )
-        self.pixelation['t0'] = 0
-        self.pixelation['cell_size'] = 3
-        self.pixelation['screen_size'] = (self.width, self.height)
+            fragment_shader=frag,
+        )
+        self.pixelation["t0"] = 0
+        self.pixelation["cell_size"] = 3
+        self.pixelation["screen_size"] = (self.width, self.height)
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
         self.pix_tex = self.ctx.texture((width, height))
         self.pix_fbo = self.ctx.framebuffer(color_attachments=[self.pix_tex])
-        self.pixelation['screen_size'] = (width, height)
+        self.pixelation["screen_size"] = (width, height)
 
     def all_draw(self):
         bc.sprite_all_draw.draw()
@@ -235,9 +262,9 @@ class Window(arcade.Window):
     def on_draw(self):
         self.clear()
         self.pix_fbo.clear()
-        with self.pix_fbo: 
+        with self.pix_fbo:
             self.all_draw()
-        self.pix_tex.use(0) 
+        self.pix_tex.use(0)
         self.quad_fs.render(self.pixelation)
 
     def on_update(self, dt: float):
@@ -249,8 +276,14 @@ class Window(arcade.Window):
         if key == arcade.key.Q:
             arcade.close_window()
         self.player.on_key_press(key)
+
     def on_key_release(self, key, mod):
         self.player.on_key_release(key)
+
+    def on_mouse_press(self, x, y, *_):
+        enemy = Enemy(Vec2(x, y), self.player)
+        physics_engine.add_ent(enemy)
+
     def on_mouse_motion(self, x, y, *_):
         self.mouse_pos = Vec2(x, y)
 

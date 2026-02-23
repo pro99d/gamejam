@@ -36,6 +36,13 @@
       "done": false,
       "dueAt": "0001-01-01T00:00:00Z",
       "notified": false
+    },
+    {
+      "id": 1771867970865945432,
+      "title": "пробитие врагов пулями",
+      "done": false,
+      "dueAt": "0001-01-01T00:00:00Z",
+      "notified": false
     }
   ]
 }
