@@ -7,7 +7,6 @@ import arcade.gl
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
 
-pymunk = arcade.PymunkPhysicsEngine(gravity= (0, 0), damping= 1.0)
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
         self.x = x
@@ -46,6 +45,16 @@ class Vec2:
             return Vec2(self.x-other.x, self.y-other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x-other, self.y-other)
+    def __rdiv__(self, other):
+        if type(other) in [int, float]:
+            return Vec2(other/self.x, other/self.y)
+    def __div__(self, other):
+        if isinstance(other, Vec2):
+            return Vec2(self.x/other.x, self.y/other.y)
+        elif type(other) in [int, float]:
+            return Vec2(self.x/other, self.y/other)
+    def __truediv__(self, other):
+        return self.__div__(other)
     def __mul__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x*other.x, self.y*other.y)
@@ -100,41 +109,39 @@ class Rect:
         self.quad.render(self.prog)
 
 class Entity:
-    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], mass= 50):
-        self.pos = pos
+    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float]):
+        self.pos: Vec2 = pos
         self.size = size
         self.angle = 0
         self.rect: arcade.Sprite = arcade.SpriteSolidColor(self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
-        self.mass = mass
         self.color = color
-        pymunk.add_sprite(self.rect, self.mass, 1, gravity= (0, 0), max_velocity=6000)
+        self.radius = min(size.x, size.y) / 2
+        self.die_calls = []
+        self.on_collide_events = []
+
+    def collide_line(self, a: Vec2, b: Vec2):
+        c = self.pos
+        d = abs((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x))/ math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2)
+        return d <= self.radius
+
     
     def update(self, dt: float):
+        self.rect.center_x += self.velocity.x*dt
+        self.rect.center_y += self.velocity.y*dt
         # self.rect.center_x= self.pos.x
         # self.rect.center_y= self.pos.y
         self.pos = Vec2(self.rect.position[0], self.rect.position[1])
         self.rect.angle = self.angle
     
     def die(self):
+        for call in self.die_calls:
+            call(self)
         if self.rect in sprite_all_draw:
             self.rect.center_y = -1000
             self.rect.center_x = -1000
             sprite_all_draw.remove(self.rect)
-        if self.rect in pymunk.sprites:
-            pymunk.remove_sprite(self.rect)
-    def accelerate(self, acc: Vec2):
-        pymunk.apply_force(self.rect, (acc*self.mass).__list__())
-    def update_vel(self, vel: Vec2):
-        phys = pymunk.get_physics_object(self.rect)
-        velocity = phys.body.velocity
-        velocity = Vec2(velocity.x, velocity.y)
-        mass = phys.body.mass 
-        impulse = velocity*mass*-1
-        pymunk.apply_impulse(self.rect, impulse.__list__())
-        new_imp = vel*mass
-        pymunk.apply_impulse(self.rect, new_imp.__list__())
 
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))
