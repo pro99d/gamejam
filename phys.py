@@ -26,24 +26,59 @@ class Line:
 @dataclass
 class Hitbox:
     points: list[Vec2]
-    def _is_collide(self, p: Vec2, r: float):
-        for i in range(len(self.points)-1):
-            a = self.points[i]
-            b = self.points[i+1]
-            ab = b - a
-            ap = p - a
-            ab_mag = ab.magnitude()
-            if ab_mag == 0:
-                if ap.magnitude()**2 <= r:
-                    dp = a-b
-                    return dp.normalize().rotate(1.5707)
-            projection_length = (ap.x * ab.x + ap.y * ab.y) / ab_mag 
-            projection_point = a + ab * (projection_length / ab_mag)
-            res =  (p - projection_point)
-            if res.x**2 + res.y ** 2 <= r:
-                dp = a-b
-                return dp.normalize().rotate(math.radians(90))
-        return False
+    def _is_collide(self, entity: Entity):
+        l = len(self.points)
+
+        center_inside = True
+        max_signed_dist = -float('inf')
+        closest_norm = None
+
+        for i in range(l):
+            a = self.points[i%l]
+            b = self.points[(i+1)%l]
+
+            edge = b - a
+            norm = edge.normalize().rotate(math.radians(90))
+            to_entity = entity.pos - a
+            signed_dist = to_entity.dot(norm)
+
+            if signed_dist > 0:
+                center_inside = False
+
+            if signed_dist > max_signed_dist:
+                max_signed_dist = signed_dist
+                closest_norm = norm
+
+        if center_inside:
+            penetration = -max_signed_dist + entity.radius
+        else:
+            for i in range(l):
+                a = self.points[i%l]
+                b = self.points[(i+1)%l]
+
+                edge = b - a
+                edge_len_sq = edge.x**2 + edge.y**2
+                if edge_len_sq == 0:
+                    continue
+
+                to_a = entity.pos - a
+                t = max(0, min(1, to_a.dot(edge) / edge_len_sq))
+                closest = a + edge * t
+
+                to_closest = entity.pos - closest
+                dist_sq = to_closest.x**2 + to_closest.y**2
+
+                if dist_sq <= entity.radius**2:
+                    dist = dist_sq**0.5 if dist_sq > 0 else 0
+                    penetration = entity.radius - dist
+                    if dist_sq > 0:
+                        norm = to_closest.normalize()
+                    else:
+                        norm = edge.normalize().rotate(math.radians(90)) * -1
+                    return (norm, penetration)
+
+            return (None, 0)
+        return (norm, penetration)
 
 
 class Engine:
@@ -66,10 +101,21 @@ class Engine:
     def update(self, dt: float):
         for hitbox in self.hitboxes:
             for entity in self.entities:
-                norm = hitbox._is_collide(entity.pos, entity.radius)
+                norm, penetration = hitbox._is_collide(entity)
+
+                # hp = [(p.x, p.y) for p in hitbox.points]
+                # arcade.draw_line_strip(hp, arcade.color.RED, 3)
+                # arcade.draw_line_strip((hp[0], hp[-1]), arcade.color.RED, 3)
                 if norm:
-                    entity.velocity += self.k * norm * entity.velocity
-                
+                    vel_dot_norm = entity.velocity.dot(norm)
+                    if vel_dot_norm < 0:
+                        entity.velocity -= vel_dot_norm * norm
+                    
+                    if penetration > 0:
+                        entity.pos += norm * penetration
+                        entity.rect.center_x = entity.pos.x
+                        entity.rect.center_y = entity.pos.y
+
         for entity in self.entities:
             entity.update(dt)
 
@@ -81,18 +127,17 @@ class Window(arcade.Window):
         self.vel = Vec2(100, -50)
         self.r = 25    
         self.a = Vec2(500, 350)
-        self.b = Vec2(180, 350)
+        self.b = Vec2(180, 150)
         dp = self.a-self.b
         self.norm = dp.normalize().rotate(math.radians(90))
     
     def collide(self):
         # norm90 = self.norm.rotate(math.radians(90)).normalize()
-        print(self.norm)
         # angle = self.norm.angle(self.vel)
         # new = norm90.rotate()
         # new = new.normalize()
         print(self.vel)
-        self.vel += 2*self.norm* self.vel
+        self.vel += -2*self.norm* self.vel
         print(self.vel)
 
     def on_draw(self):
