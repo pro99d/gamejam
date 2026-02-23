@@ -16,7 +16,6 @@ class Bullet(bc.Entity):
             pos= pos,
             size= size,
             color= color,
-            mass= 0.09
         )
         self.owner = owner
         self.damage = damage
@@ -64,12 +63,17 @@ class WearponData:
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
         super().__init__(pos, size, (100, 100, 100))
-        print(size)
         a = size.__div__(2)
         b = size.__div__(-2)
         c = Vec2(size.x/2, size.y/-2)
         d = Vec2(size.x/-2, size.y/2)
-        self.hitbox = phys.Hitbox([a, b, c, d])
+        p = self.pos
+        self.hitbox = phys.Hitbox([p+ a, p+c, p+b, p+d])
+    def draw_hitbox(self):
+        hp = [(p.x, p.y) for p in self.hitbox.points]
+        arcade.draw_line_strip(hp, arcade.color.RED, 3)
+        arcade.draw_line_strip((hp[0], hp[-1]), arcade.color.RED, 3)
+         
         
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
@@ -156,7 +160,7 @@ class Player(bc.Entity):
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 60
+        acc = 90
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -165,7 +169,8 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        self.velocity += dv
+        if self.velocity.magnitude() < acc*10:
+            self.velocity += dv
         #update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
@@ -181,28 +186,58 @@ class Window(arcade.Window):
     def __init__(self):
         super().__init__(800, 600, "game for game jam")
         self.bloom = arcade.experimental.BloomFilter(self.width, self.height, 20)
-        self.player = Player(Vec2(200, 400)) 
+        self.player = Player(Vec2(400, 400)) 
         self.mouse_pos = Vec2(1, 1)
         self.walls = [Wall(Vec2(i.x, i.y)) for i in l1]
-        self.physics_engine: phys.Engine = phys.Engine(2)
+        self.physics_engine: phys.Engine = phys.Engine(1.5)
         self.physics_engine.add_ent(self.player)
+
         for wall in self.walls:
             self.physics_engine.add_hitbox(wall.hitbox)    
 
+        self.init_pixelaion_shader() 
+    
+    def init_pixelaion_shader(self):
+        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
+        # Create texture and FBO
+        self.pix_tex = self.ctx.texture((self.width, self.height))
+        self.pix_fbo = self.ctx.framebuffer(color_attachments=[self.pix_tex])
+        # Put something in the framebuffer to start
+        self.pix_fbo.clear(color=arcade.color.ALMOND)
+
+
+        with open("shaders/pixelation.glsl") as f:
+            frag = f.read()
+        self.pixelation = self.ctx.program(
+                vertex_shader="""
+                #version 330
+                in vec2 in_vert;
+                void main(){
+                    gl_Position = vec4(in_vert, 0., 1.);
+                }
+                """,
+                fragment_shader= frag
+                )
+        self.pixelation['t0'] = 0
+        self.pixelation['cell_size'] = 3
+        self.pixelation['screen_size'] = (self.width, self.height)
+
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
+        self.pix_tex = self.ctx.texture((width, height))
+        self.pix_fbo = self.ctx.framebuffer(color_attachments=[self.pix_tex])
+        self.pixelation['screen_size'] = (width, height)
 
     def all_draw(self):
         bc.sprite_all_draw.draw()
 
     def on_draw(self):
         self.clear()
-        # self.bloom.fbo.use()
-        self.bloom.fbo.clear()
-        # with self.bloom.fbo: 
-        self.all_draw()
-        self.ctx.screen.use()
-        # self.bloom.draw(0, self.ctx.screen)
+        self.pix_fbo.clear()
+        with self.pix_fbo: 
+            self.all_draw()
+        self.pix_tex.use(0) 
+        self.quad_fs.render(self.pixelation)
 
     def on_update(self, dt: float):
         self.physics_engine.update(dt)
