@@ -8,6 +8,7 @@ import random
 import phys
 
 enemies = []
+physics_engine: phys.Engine = phys.Engine()
 
 class Bullet(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner):
@@ -23,6 +24,8 @@ class Bullet(bc.Entity):
         angle = math.radians(-angle-90)
         self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
         self.lifetime = 0
+        physics_engine.add_ent(self)
+
 
     def get_nearest_enemy(self, enemies):
         min_dist_sq = float("inf")
@@ -38,12 +41,10 @@ class Bullet(bc.Entity):
                 e = enemy 
         return e
 
-    def update(self, dt, enemies: list):
+    def update(self, dt):
         self.lifetime+=dt
         super().update(dt)
         hit = False
-        if self.owner in enemies:
-            enemies.remove(self.owner)
         en = self.get_nearest_enemy(enemies)
         if en:
             if not en.inv:
@@ -101,7 +102,7 @@ class Wearpon:
         self.angle = self.sprite.angle-90
 
         for bullet in self.bullets:
-            bullet.update(dt, [])
+            # bullet.update(dt, [])
             if bullet.lifetime > self.prop.lifetime:
                 bullet.die()
                 self.bullets.remove(bullet)
@@ -131,7 +132,7 @@ class Pistol(Wearpon):
         self.bullets = []
         super().__init__(parent)
         self.prop = WearponData(
-            reload= 1.0,
+            reload= 0.1,
             damage= 15.0,
             spread= 15.0,
             size= Vec2(5, 10),
@@ -147,6 +148,7 @@ class Player(bc.Entity):
         self.keys = set() 
         self.pistol = Pistol(self)
         self.health = 50
+        physics_engine.add_ent(self)
 
     def set_angle(self, mouse_pos: Vec2):
 
@@ -188,12 +190,10 @@ class Window(arcade.Window):
         self.bloom = arcade.experimental.BloomFilter(self.width, self.height, 20)
         self.player = Player(Vec2(400, 400)) 
         self.mouse_pos = Vec2(1, 1)
-        self.walls = [Wall(Vec2(i.x, i.y)) for i in l1]
-        self.physics_engine: phys.Engine = phys.Engine(1.5)
-        self.physics_engine.add_ent(self.player)
+        self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
         for wall in self.walls:
-            self.physics_engine.add_hitbox(wall.hitbox)    
+            physics_engine.add_hitbox(wall.hitbox)    
 
         self.init_pixelaion_shader() 
     
@@ -240,7 +240,7 @@ class Window(arcade.Window):
         self.quad_fs.render(self.pixelation)
 
     def on_update(self, dt: float):
-        self.physics_engine.update(dt)
+        physics_engine.update(dt)
         # self.player.update(dt)
         self.player.set_angle(self.mouse_pos)
 
