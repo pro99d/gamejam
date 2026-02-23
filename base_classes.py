@@ -119,6 +119,7 @@ class Entity:
         self.color = color
         self.radius = min(size.x, size.y) / 2
         self.die_calls = []
+        self.on_collide_events = []
 
     def collide_line(self, a: Vec2, b: Vec2):
         c = self.pos

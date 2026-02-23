@@ -125,6 +125,8 @@ class Engine:
                         entity.pos += norm * penetration
                         entity.rect.center_x = entity.pos.x
                         entity.rect.center_y = entity.pos.y
+                    for call in entity.on_collide_events:
+                        call()
 
         for entity in self.entities:
             entity.update(dt)

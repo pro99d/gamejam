@@ -25,6 +25,7 @@ class Bullet(bc.Entity):
         self.velocity = Vec2(math.cos(angle)*vel, math.sin(angle)*vel)
         self.lifetime = 0
         physics_engine.add_ent(self)
+        self.on_collide_events.append(self.die)
 
 
     def get_nearest_enemy(self, enemies):
