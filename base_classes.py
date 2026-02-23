@@ -53,6 +53,8 @@ class Vec2:
             return Vec2(self.x/other.x, self.y/other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x/other, self.y/other)
+    def __truediv__(self, other):
+        return self.__div__(other)
     def __mul__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x*other.x, self.y*other.y)
@@ -108,28 +110,21 @@ class Rect:
 
 class Entity:
     def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float]):
-        self.pos = pos
+        self.pos: Vec2 = pos
         self.size = size
         self.angle = 0
         self.rect: arcade.Sprite = arcade.SpriteSolidColor(self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
         self.color = color
-        self.radius = size.magnitude()
-        self.radius * self.radius
+        self.radius = min(size.x, size.y) / 2
         self.die_calls = []
 
     def collide_line(self, a: Vec2, b: Vec2):
-        p = self.pos
-        ab = b - a
-        ap = p - a
-        ab_mag = ab.magnitude()
-        if ab_mag == 0:
-            return ap.magnitude() <= self.radius**0.5
-        projection_length = (ap.x * ab.x + ap.y * ab.y) / ab_mag 
-        projection_point = a + ab * (projection_length / ab_mag)
-        res =  (p - projection_point)
-        return res.x**2 + res.y ** 2 <= self.radius
+        c = self.pos
+        d = abs((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x))/ math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2)
+        return d <= self.radius
+
     
     def update(self, dt: float):
         self.rect.center_x += self.velocity.x*dt
