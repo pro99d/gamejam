@@ -5,6 +5,12 @@ from base_classes import Entity
 from dataclasses import dataclass
 
 fl = Falsfl = False
+def is_on_left(a, b, c):
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0
+
+def line_intersection(a, b, c, d):
+    return (is_on_left(a, b, c) != is_on_left(a, b, d)) and (is_on_left(c, d, a) != is_on_left(c, d, b))
+
 def distance_point_to_line(P: Vec2, A: Vec2, B: Vec2) -> float:
     AB = B - A
     AP = P - A
@@ -26,7 +32,11 @@ class Line:
 @dataclass
 class Hitbox:
     points: list[Vec2]
-    def _is_collide(self, entity: Entity):
+    def get_normal(self, a: Vec2, b: Vec2):
+        edge = b - a
+        norm = edge.normalize().rotate(math.radians(90))
+        return norm
+    def _is_collide(self, entity: Entity, dt):
         l = len(self.points)
 
         center_inside = True
@@ -37,8 +47,7 @@ class Hitbox:
             a = self.points[i%l]
             b = self.points[(i+1)%l]
 
-            edge = b - a
-            norm = edge.normalize().rotate(math.radians(90))
+            norm = self.get_normal(a, b)
             to_entity = entity.pos - a
             signed_dist = to_entity.dot(norm)
 
@@ -49,6 +58,8 @@ class Hitbox:
                 max_signed_dist = signed_dist
                 closest_norm = norm
 
+            if line_intersection(a, b, entity.pos, entity.pos+ entity.velocity*dt):
+                return closest_norm, distance_point_to_line(entity.pos + entity.velocity*dt, a, b)
         if center_inside:
             penetration = -max_signed_dist + entity.radius
         else:
@@ -82,8 +93,7 @@ class Hitbox:
 
 
 class Engine:
-    def __init__(self, k: float):
-        self.k = k
+    def __init__(self):
         self.entities: list[Entity] = []
         self.hitboxes: list[Hitbox] = []
 
@@ -101,7 +111,7 @@ class Engine:
     def update(self, dt: float):
         for hitbox in self.hitboxes:
             for entity in self.entities:
-                norm, penetration = hitbox._is_collide(entity)
+                norm, penetration = hitbox._is_collide(entity, dt)
 
                 # hp = [(p.x, p.y) for p in hitbox.points]
                 # arcade.draw_line_strip(hp, arcade.color.RED, 3)
