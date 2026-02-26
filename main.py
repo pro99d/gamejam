@@ -14,15 +14,19 @@ class Bullet(bc.Entity):
         self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner
     ):
         color = (235, 155, 90)
+
+
+
         angle = -angle
         ra = math.radians(angle)
         self.pos = pos
-        dir = Vec2(math.cos(ra), math.sin(ra))
+        dir = Vec2(math.cos(ra)/2, math.sin(ra))
         size_p = max(owner.rect.width, owner.rect.height)
         self.pos += size_p * dir
         self.rect = arcade.SpriteSolidColor(size.x, size.y, self.pos.x, self.pos.y, color, angle)
+        self.rect.parent = self
         bc.sprite_all_draw.append(self.rect)
-        bc.phys.add_sprite(self.rect, 0.09)
+        bc.phys.add_sprite(self.rect, 0.09, collision_type= "Bullet")
         bc.phys.update_sprite(self.rect)
         self.owner = owner
         self.damage = damage
@@ -32,7 +36,7 @@ class Bullet(bc.Entity):
         # Calculate force based on angle and velocity
         force = (Vec2(1, -1) * 2500).__list__()
         # print(force)
-        bc.phys.apply_force(self.rect, [2500, 0])
+        bc.phys.apply_force(self.rect, [3500, 0])
 
         self.pos = Vec2(
                 self.rect.center_x,
@@ -43,6 +47,11 @@ class Bullet(bc.Entity):
     def update(self, dt):
         self.lifetime += dt
 
+    def die(self):
+        for call in self.die_calls:
+            call(self)
+        if self.rect in bc.sprite_all_draw:
+            bc.sprite_all_draw.remove(self.rect)
 
 @dataclass
 class WearponData:
@@ -55,7 +64,7 @@ class WearponData:
 
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2 = Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), moment_of_inertia= bc.PymunkPhysicsEngine.MOMENT_INF, collision_type= "wall", type_ = bc.PymunkPhysicsEngine.STATIC)
+        super().__init__(pos, size, (100, 100, 100), moment_of_inertia= bc.PymunkPhysicsEngine.MOMENT_INF, collision_type= "Wall", type_ = bc.PymunkPhysicsEngine.STATIC)
         a = size.__div__(2)
         b = size.__div__(-2)
         c = Vec2(size.x / 2, size.y / -2)
@@ -133,7 +142,7 @@ class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
             pos, Vec2(50, 50), (255, 0, 0),
-            collision_type="enemy",
+            collision_type="Enemy",
         )
         self.target = target
         self.health = 100
@@ -142,16 +151,11 @@ class Enemy(bc.Entity):
     def update(self, dt):
         super().update(dt)
 
-        dp = self.pos - self.target.pos
-        if dp.y:
-            self.angle = math.degrees(math.atan2(dp.x, dp.y))
-        else:
-            if dp.x > 0:
-                self.angle = 90
-            else:
-                self.angle = 180
-        speed = 100
-        self.velocity = dp.normalize()*-speed
+        dp = self.target.pos - self.pos
+        self.angle = math.degrees(math.atan2(dp.x, dp.y))
+        speed = 300
+        self.velocity = dp.normalize()*speed
+        bc.phys.apply_force(self.rect, self.velocity.__list__())
 
 
 class Player(bc.Entity):
@@ -211,67 +215,39 @@ class Window(arcade.Window):
 
         # for wall in self.walls:
         # physics_engine.add_hitbox(wall.hitbox)
-
         self.setup_collision_handlers()
         self.init_pixelaion_shader()
 
     def setup_collision_handlers(self):
-        """Set up Pymunk collision handlers for bullet interactions."""
 
-        def bullet_enemy_handler(sprite_a, sprite_b, arbiter, space, data):
-            """Called when bullet hits enemy."""
-            bullet_shape = arbiter.shapes[0]
-            enemy_shape = arbiter.shapes[1]
-            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
-            enemy_sprite = bc.phys.get_sprite_for_shape(enemy_shape)
-
-            # Get bullet object from sprite attribute
-            bullet_obj = getattr(bullet_sprite, 'bullet_object', None)
-            damage = bullet_obj.damage if bullet_obj else 25.0
-
-            # Find the enemy object from the enemies list
-            enemy_obj = None
-            for enemy in enemies:
-                if enemy.rect == enemy_sprite:
-                    enemy_obj = enemy
-                    break
-
-            if enemy_obj and not enemy_obj.inv:
-                # Apply damage to enemy
-                enemy_obj.health -= damage
-                if enemy_obj.health <= 0:
-                    enemy_obj.die()
-                    if enemy_obj in enemies:
-                        enemies.remove(enemy_obj)
-
-            # Remove bullet
-            if bullet_sprite in bc.sprite_all_draw:
-                bullet_sprite.remove_from_sprite_lists()
-
-            return True
-
-        def bullet_wall_handler(sprite_a, sprite_b, arbiter, space, data):
-            """Called when bullet hits wall."""
+        def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
+            """ Called for bullet/enemy collision """
+            # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+            bullet_sprite.remove_from_sprite_lists()
+            bullet_sprite.parent.die()
 
-            # Remove bullet
-            if bullet_sprite in bc.sprite_all_draw:
-                bullet_sprite.remove_from_sprite_lists()
 
-            return True
-
-        # Register collision handlers
+        def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
+            """ Called for bullet/wall collision """
+            # TODO add checks for types
+            bullet_shape = arbiter.shapes[0]
+            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+            bullet_sprite.remove_from_sprite_lists()
+            bullet_sprite.parent.die()
+        
         bc.phys.add_collision_handler(
-            "bullet",
-            "enemy",
-            post_handler=bullet_enemy_handler,
-        )
+                "Bullet",
+                "Enemy",
+                post_handler= enemy_hit_handler
+                )
         bc.phys.add_collision_handler(
-            "bullet",
-            "wall",
-            post_handler=bullet_wall_handler,
-        )
+                "Bullet",
+                "Wall",
+                post_handler= wall_hit_handler
+                )
+
 
     def init_pixelaion_shader(self):
         self.quad_fs = arcade.gl.geometry.quad_2d_fs()
@@ -318,6 +294,8 @@ class Window(arcade.Window):
         bc.phys.step(1/60)
         self.player.update(dt)
         self.player.set_angle(self.mouse_pos)
+        for enemy in enemies:
+            enemy.update(dt)
 
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
