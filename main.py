@@ -5,10 +5,8 @@ from base_classes import Vec2
 import time
 import math
 import random
-import phys
 
 enemies = []
-physics_engine: phys.Engine = phys.Engine()
 
 
 class Bullet(bc.Entity):
@@ -16,45 +14,34 @@ class Bullet(bc.Entity):
         self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner
     ):
         color = (235, 155, 90)
-        super().__init__(
-            pos=pos,
-            size=size,
-            color=color,
-        )
+        angle = -angle
+        ra = math.radians(angle)
+        self.pos = pos
+        dir = Vec2(math.cos(ra), math.sin(ra))
+        size_p = max(owner.rect.width, owner.rect.height)
+        self.pos += size_p * dir
+        self.rect = arcade.SpriteSolidColor(size.x, size.y, self.pos.x, self.pos.y, color, angle)
+        bc.sprite_all_draw.append(self.rect)
+        bc.phys.add_sprite(self.rect, 0.09)
+        bc.phys.update_sprite(self.rect)
         self.owner = owner
         self.damage = damage
         self.angle = angle
-        angle = math.radians(-angle - 90)
-        self.velocity = Vec2(math.cos(angle) * vel, math.sin(angle) * vel)
         self.lifetime = 0
-        physics_engine.add_ent(self)
-        self.on_collide_events.append(self.die)
+        self.die_calls = []
+        # Calculate force based on angle and velocity
+        force = (Vec2(1, -1) * 2500).__list__()
+        # print(force)
+        bc.phys.apply_force(self.rect, [2500, 0])
 
-    def get_nearest_enemy(self, enemies):
-        min_dist_sq = float("inf")
-        e = None
-        for enemy in enemies:
-            if enemy == self.owner:
-                continue
-            dx = self.pos.x - enemy.pos.x
-            dy = self.pos.y - enemy.pos.y
-            dist_sq = dx * dx + dy * dy
-            if dist_sq <= min_dist_sq:
-                min_dist_sq = dist_sq
-                e = enemy
-        return e
+        self.pos = Vec2(
+                self.rect.center_x,
+                self.rect.center_y,
+                )
+        # self.update(0)
 
     def update(self, dt):
         self.lifetime += dt
-        super().update(dt)
-        hit = False
-        en = self.get_nearest_enemy(enemies)
-        if en:
-            if not en.inv:
-                if math.dist(self.pos.__list__(), en.pos.__list__()) <= 60:
-                    en.health -= self.damage
-                    hit = True
-        return hit
 
 
 @dataclass
@@ -68,18 +55,12 @@ class WearponData:
 
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2 = Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100))
+        super().__init__(pos, size, (100, 100, 100), moment_of_inertia= bc.PymunkPhysicsEngine.MOMENT_INF, collision_type= "wall", type_ = bc.PymunkPhysicsEngine.STATIC)
         a = size.__div__(2)
         b = size.__div__(-2)
         c = Vec2(size.x / 2, size.y / -2)
         d = Vec2(size.x / -2, size.y / 2)
         p = self.pos
-        self.hitbox = phys.Hitbox([p + a, p + c, p + b, p + d])
-
-    def draw_hitbox(self):
-        hp = [(p.x, p.y) for p in self.hitbox.points]
-        arcade.draw_line_strip(hp, arcade.color.RED, 3)
-        arcade.draw_line_strip((hp[0], hp[-1]), arcade.color.RED, 3)
 
 
 l1 = [Vec2(100, 200), Vec2(200, 200)]
@@ -100,21 +81,24 @@ class Wearpon:
     def update(self, dt):
         self.sprite.center_x = self.parent.rect.center_x
         self.sprite.center_y = self.parent.rect.center_y
-        self.sprite.angle = self.parent.angle
+        self.sprite.angle = self.parent.angle + 90
         self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
-        self.angle = self.sprite.angle - 90
+        self.angle = self.sprite.angle
 
         for bullet in self.bullets:
-            # bullet.update(dt, [])
+            bullet.update(dt)
             if bullet.lifetime > self.prop.lifetime:
                 bullet.die()
                 self.bullets.remove(bullet)
 
     def shoot(self):
         if time.time() - self.last_shot >= self.prop.reload:
-            self.bullets.append(
-                Bullet(
-                    pos=self.pos,
+            f = Vec2(math.cos(math.radians(90+self.angle)), math.sin(math.radians(self.angle+90)))
+            r = max(self.parent.rect.width, self.parent.rect.height) / 2
+            f*=r
+
+            bullet = Bullet(
+                    pos=self.pos + f,
                     size=self.prop.size,
                     vel=1000,
                     angle=self.angle
@@ -122,9 +106,9 @@ class Wearpon:
                                      self.prop.spread / 2)
                     + 90,
                     damage=self.prop.damage,
-                    owner=self,
+                    owner=self.parent,
                 )
-            )
+            self.bullets.append(bullet)
             self.last_shot = time.time()
 
     def die(self):
@@ -147,8 +131,13 @@ class Pistol(Wearpon):
 
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
-        super().__init__(pos, Vec2(50, 50), (255, 0, 0))
+        super().__init__(
+            pos, Vec2(50, 50), (255, 0, 0),
+            collision_type="enemy",
+        )
         self.target = target
+        self.health = 100
+        self.inv = False
 
     def update(self, dt):
         super().update(dt)
@@ -167,27 +156,23 @@ class Enemy(bc.Entity):
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
-        super().__init__(pos, Vec2(50, 50), (0, 255, 0))
+        super().__init__(pos, Vec2(50, 50), (0, 255, 0),
+                        moment_of_inertia=bc.PymunkPhysicsEngine.MOMENT_INF,
+                        collision_type="player",
+                        max_velocity=400)
         self.keys = set()
         self.pistol = Pistol(self)
         self.health = 50
-        physics_engine.add_ent(self)
 
     def set_angle(self, mouse_pos: Vec2):
 
-        dp = self.pos - mouse_pos
-        if dp.y:
-            self.angle = math.degrees(math.atan2(dp.x, dp.y))
-        else:
-            if dp.x > 0:
-                self.angle = 90
-            else:
-                self.angle = 180
+        dp = mouse_pos - self.pos
+        self.angle = math.degrees(math.atan2(dp.x, dp.y)) + 90
 
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 90
+        acc = 4000
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -196,13 +181,16 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        if self.velocity.magnitude() < acc * 10:
-            self.velocity += dv
+        bc.phys.apply_force(self.rect, dv.__list__())
+        # if self.velocity.magnitude() < acc * 10:
+            # self.velocity += dv
         # update all childs
         self.pistol.update(dt)
         if arcade.key.SPACE in self.keys:
             self.pistol.shoot()
-
+        self.pos.x = self.rect.center_x
+        self.pos.y = self.rect.center_y
+        self.pistol.update(dt)
         return super().update(dt)
 
     def on_key_press(self, key):
@@ -221,10 +209,69 @@ class Window(arcade.Window):
         self.mouse_pos = Vec2(1, 1)
         self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
-        for wall in self.walls:
-            physics_engine.add_hitbox(wall.hitbox)
+        # for wall in self.walls:
+        # physics_engine.add_hitbox(wall.hitbox)
 
+        self.setup_collision_handlers()
         self.init_pixelaion_shader()
+
+    def setup_collision_handlers(self):
+        """Set up Pymunk collision handlers for bullet interactions."""
+
+        def bullet_enemy_handler(sprite_a, sprite_b, arbiter, space, data):
+            """Called when bullet hits enemy."""
+            bullet_shape = arbiter.shapes[0]
+            enemy_shape = arbiter.shapes[1]
+            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+            enemy_sprite = bc.phys.get_sprite_for_shape(enemy_shape)
+
+            # Get bullet object from sprite attribute
+            bullet_obj = getattr(bullet_sprite, 'bullet_object', None)
+            damage = bullet_obj.damage if bullet_obj else 25.0
+
+            # Find the enemy object from the enemies list
+            enemy_obj = None
+            for enemy in enemies:
+                if enemy.rect == enemy_sprite:
+                    enemy_obj = enemy
+                    break
+
+            if enemy_obj and not enemy_obj.inv:
+                # Apply damage to enemy
+                enemy_obj.health -= damage
+                if enemy_obj.health <= 0:
+                    enemy_obj.die()
+                    if enemy_obj in enemies:
+                        enemies.remove(enemy_obj)
+
+            # Remove bullet
+            if bullet_sprite in bc.sprite_all_draw:
+                bullet_sprite.remove_from_sprite_lists()
+
+            return True
+
+        def bullet_wall_handler(sprite_a, sprite_b, arbiter, space, data):
+            """Called when bullet hits wall."""
+            bullet_shape = arbiter.shapes[0]
+            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+
+            # Remove bullet
+            if bullet_sprite in bc.sprite_all_draw:
+                bullet_sprite.remove_from_sprite_lists()
+
+            return True
+
+        # Register collision handlers
+        bc.phys.add_collision_handler(
+            "bullet",
+            "enemy",
+            post_handler=bullet_enemy_handler,
+        )
+        bc.phys.add_collision_handler(
+            "bullet",
+            "wall",
+            post_handler=bullet_wall_handler,
+        )
 
     def init_pixelaion_shader(self):
         self.quad_fs = arcade.gl.geometry.quad_2d_fs()
@@ -268,8 +315,8 @@ class Window(arcade.Window):
         self.quad_fs.render(self.pixelation)
 
     def on_update(self, dt: float):
-        physics_engine.update(dt)
-        # self.player.update(dt)
+        bc.phys.step(1/60)
+        self.player.update(dt)
         self.player.set_angle(self.mouse_pos)
 
     def on_key_press(self, key, *_):
@@ -282,7 +329,7 @@ class Window(arcade.Window):
 
     def on_mouse_press(self, x, y, *_):
         enemy = Enemy(Vec2(x, y), self.player)
-        physics_engine.add_ent(enemy)
+        enemies.append(enemy)
 
     def on_mouse_motion(self, x, y, *_):
         self.mouse_pos = Vec2(x, y)

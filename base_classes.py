@@ -3,9 +3,12 @@ import math
 import json
 import arcade
 import arcade.gl
+from arcade.pymunk_physics_engine import PymunkPhysicsEngine
 
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
+
+phys = PymunkPhysicsEngine((0, 0), 0.7)
 
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
@@ -109,7 +112,9 @@ class Rect:
         self.quad.render(self.prog)
 
 class Entity:
-    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float]):
+    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], 
+                 moment_of_inertia: float = PymunkPhysicsEngine.MOMENT_INF,
+                 collision_type: str = None, max_velocity: float = None, type_= PymunkPhysicsEngine.DYNAMIC):
         self.pos: Vec2 = pos
         self.size = size
         self.angle = 0
@@ -120,6 +125,13 @@ class Entity:
         self.radius = min(size.x, size.y) / 2
         self.die_calls = []
         self.on_collide_events = []
+        phys.add_sprite(self.rect,
+                       friction=0.7,
+                       moment_of_inertia=moment_of_inertia,
+                       damping=0.01,
+                       collision_type=collision_type,
+                       max_velocity=max_velocity,
+                        body_type= type_)
 
     def collide_line(self, a: Vec2, b: Vec2):
         c = self.pos

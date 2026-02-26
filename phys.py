@@ -37,7 +37,8 @@ class Line:
 
 @dataclass
 class Hitbox:
-    points: list[Vec2]
+    def __init__(self, points: list[Vec2]):
+        self.points: list[Vec2] = points
 
     def get_normal(self, a: Vec2, b: Vec2):
         edge = b - a
