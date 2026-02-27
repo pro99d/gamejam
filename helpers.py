@@ -1,6 +1,10 @@
 from base_classes import Vec2
 from dataclasses import dataclass
 import base64
+import arcade
+
+# class Shader:
+    # def __init__(self, frag: str, ctx: arcade.Window.ctx, vert: str | None= None)
 
 @dataclass
 class EnemyData:

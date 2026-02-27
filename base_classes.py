@@ -126,12 +126,13 @@ class Entity:
         self.die_calls = []
         self.on_collide_events = []
         phys.add_sprite(self.rect,
-                       friction=0.7,
-                       moment_of_inertia=moment_of_inertia,
-                       damping=0.01,
-                       collision_type=collision_type,
-                       max_velocity=max_velocity,
-                        body_type= type_)
+                        friction=0.7,
+                        moment_of_inertia=moment_of_inertia,
+                        damping=0.01,
+                        collision_type=collision_type,
+                        max_velocity=max_velocity,
+                        body_type= type_,
+                        elasticity= 0.05)
 
     def collide_line(self, a: Vec2, b: Vec2):
         c = self.pos

@@ -26,7 +26,7 @@ class Bullet(bc.Entity):
         self.rect = arcade.SpriteSolidColor(size.x, size.y, self.pos.x, self.pos.y, color, angle)
         self.rect.parent = self
         bc.sprite_all_draw.append(self.rect)
-        bc.phys.add_sprite(self.rect, 0.09, collision_type= "Bullet")
+        bc.phys.add_sprite(self.rect, 0.09, collision_type= "Bullet", elasticity= 0.1)
         bc.phys.update_sprite(self.rect)
         self.owner = owner
         self.damage = damage
@@ -34,9 +34,9 @@ class Bullet(bc.Entity):
         self.lifetime = 0
         self.die_calls = []
         # Calculate force based on angle and velocity
-        force = (Vec2(1, -1) * 2500).__list__()
+        # force = (Vec2(1, -1) * 2500).__list__()
         # print(force)
-        bc.phys.apply_force(self.rect, [3500, 0])
+        bc.phys.apply_force(self.rect, [5500, 0])
 
         self.pos = Vec2(
                 self.rect.center_x,
@@ -215,8 +215,17 @@ class Window(arcade.Window):
 
         # for wall in self.walls:
         # physics_engine.add_hitbox(wall.hitbox)
+        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
+        # Create texture and FBO
+        self.tex = self.ctx.texture((self.width, self.height))
+        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
+        # Put something in the framebuffer to start
+        self.fbo.clear(color=arcade.color.ALMOND)
         self.setup_collision_handlers()
         self.init_pixelaion_shader()
+        self.init_vignette_shader()
+        self.camera = arcade.Camera2D()
+
 
     def setup_collision_handlers(self):
 
@@ -224,9 +233,10 @@ class Window(arcade.Window):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
+            # arbiter.ignore = True
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
-            bullet_sprite.remove_from_sprite_lists()
-            bullet_sprite.parent.die()
+            # bullet_sprite.remove_from_sprite_lists()
+            # bullet_sprite.parent.die()
 
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
@@ -234,8 +244,8 @@ class Window(arcade.Window):
             # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
-            bullet_sprite.remove_from_sprite_lists()
-            bullet_sprite.parent.die()
+            # bullet_sprite.remove_from_sprite_lists()
+            # bullet_sprite.parent.die()
         
         bc.phys.add_collision_handler(
                 "Bullet",
@@ -249,13 +259,22 @@ class Window(arcade.Window):
                 )
 
 
+    def init_vignette_shader(self):
+        with open("shaders/vignette.glsl") as f:
+            frag = f.read()
+        self.vignette = self.ctx.program(
+            vertex_shader="""
+                #version 330
+                in vec2 in_vert;
+                void main(){
+                    gl_Position = vec4(in_vert, 0., 1.);
+                }
+                """,
+            fragment_shader=frag,
+        )
+        self.vignette["t0"] = 0
+        self.vignette["screen_size"] = (self.width, self.height)
     def init_pixelaion_shader(self):
-        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
-        # Create texture and FBO
-        self.pix_tex = self.ctx.texture((self.width, self.height))
-        self.pix_fbo = self.ctx.framebuffer(color_attachments=[self.pix_tex])
-        # Put something in the framebuffer to start
-        self.pix_fbo.clear(color=arcade.color.ALMOND)
 
         with open("shaders/pixelation.glsl") as f:
             frag = f.read()
@@ -275,8 +294,8 @@ class Window(arcade.Window):
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
-        self.pix_tex = self.ctx.texture((width, height))
-        self.pix_fbo = self.ctx.framebuffer(color_attachments=[self.pix_tex])
+        self.tex = self.ctx.texture((width, height))
+        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
         self.pixelation["screen_size"] = (width, height)
 
     def all_draw(self):
@@ -284,11 +303,13 @@ class Window(arcade.Window):
 
     def on_draw(self):
         self.clear()
-        self.pix_fbo.clear()
-        with self.pix_fbo:
+        self.camera.use()
+        self.fbo.clear(color = (255, 255, 255))
+        with self.fbo:
             self.all_draw()
-        self.pix_tex.use(0)
+        self.tex.use(0)
         self.quad_fs.render(self.pixelation)
+        self.quad_fs.render(self.vignette)
 
     def on_update(self, dt: float):
         bc.phys.step(1/60)
