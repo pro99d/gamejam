@@ -14,5 +14,5 @@ void main() {
     float x = abs(UV.r - .5) * 2.0;
     float y = abs(UV.g - .5) * 2.0;
     float q = 1.0 - (1.0 - sqrt(x * x + y * y) / outer_radius) / (1.0 - inner_radius);
-    fragColor = vec4(i.x - q, i.y - q, i.z - q, q * alpha);
+    fragColor = vec4(i.x - q * alpha, i.y - q * alpha, i.z - q * alpha, q * alpha);
 }

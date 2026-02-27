@@ -265,6 +265,10 @@ class Window(arcade.Window):
         # self.vignette["screen_size"] = (width, height)
         self.vig.resize(width, height)
         self.vig["screen_size"] = (width, height)
+        self.vig["inner_radius"] = 0.0
+        self.vig["outer_radius"] = 0.9
+        self.vig["alpha"] = 1
+        
 
         # self.bg["screen_size"] = (width, height)
         self.bg["cell_size"] = 50
