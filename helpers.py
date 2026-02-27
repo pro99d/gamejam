@@ -3,8 +3,53 @@ from dataclasses import dataclass
 import base64
 import arcade
 
-# class Shader:
-    # def __init__(self, frag: str, ctx: arcade.Window.ctx, vert: str | None= None)
+class Shader:
+    def __init__(self, frag: str, ctx, vert: str | None= None, w: int= 1920, h: int= 1080):
+        self.ctx = ctx
+        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
+        self.w = w
+        self.h = h
+        self.tex = self.ctx.texture((w, h))
+        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
+
+        self.fbo.clear()
+
+        if not vert:
+            vert_sh = """
+                #version 330
+                in vec2 in_vert;
+                void main(){
+                    gl_Position = vec4(in_vert, 0., 1.);
+                }
+            """
+        else:
+            with open(vert) as f:
+                vert_sh = f.read()
+        with open(frag) as f:
+            frag_sh = f.read()
+        self.prog = self.ctx.program(
+                vertex_shader= vert_sh,
+                fragment_shader= frag_sh,
+                )
+    def resize(self, w, h):
+        self.tex = self.ctx.texture((w, h))
+        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
+    def __enter__(self):
+        self.fbo.__enter__()
+
+    def __exit__(self, *_, **__):
+        self.fbo.__exit__(*_, **__)
+
+    def draw(self):
+        self.tex.use(0)
+        self.quad_fs.render(self.prog)
+
+    def clear(self, color= (0, 0, 0)):
+        self.fbo.clear(color= color)
+
+    
+    def __setitem__(self, key, value):
+        self.prog[key] = value
 
 @dataclass
 class EnemyData:

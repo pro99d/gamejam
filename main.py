@@ -5,6 +5,7 @@ from base_classes import Vec2
 import time
 import math
 import random
+import helpers
 
 enemies = []
 
@@ -23,7 +24,7 @@ class Bullet(bc.Entity):
         dir = Vec2(math.cos(ra)/2, math.sin(ra))
         size_p = max(owner.rect.width, owner.rect.height)
         self.pos += size_p * dir
-        self.rect = arcade.SpriteSolidColor(size.x, size.y, self.pos.x, self.pos.y, color, angle)
+        self.rect = arcade.SpriteSolidColor(size.y, size.x, self.pos.x, self.pos.y, color, angle)
         self.rect.parent = self
         bc.sprite_all_draw.append(self.rect)
         bc.phys.add_sprite(self.rect, 0.09, collision_type= "Bullet", elasticity= 0.1)
@@ -72,7 +73,7 @@ class Wall(bc.Entity):
         p = self.pos
 
 
-l1 = [Vec2(100, 200), Vec2(200, 200)]
+l1 = [Vec2(90, 200), Vec2(200, 200)]
 
 
 class Wearpon:
@@ -213,18 +214,12 @@ class Window(arcade.Window):
         self.mouse_pos = Vec2(1, 1)
         self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
-        # for wall in self.walls:
-        # physics_engine.add_hitbox(wall.hitbox)
-        self.quad_fs = arcade.gl.geometry.quad_2d_fs()
-        # Create texture and FBO
-        self.tex = self.ctx.texture((self.width, self.height))
-        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
-        # Put something in the framebuffer to start
-        self.fbo.clear(color=arcade.color.ALMOND)
+        self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
+        self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
+
         self.setup_collision_handlers()
-        self.init_pixelaion_shader()
-        self.init_vignette_shader()
         self.camera = arcade.Camera2D()
+        self.camera_pos = Vec2(0, 0)
 
 
     def setup_collision_handlers(self):
@@ -259,57 +254,33 @@ class Window(arcade.Window):
                 )
 
 
-    def init_vignette_shader(self):
-        with open("shaders/vignette.glsl") as f:
-            frag = f.read()
-        self.vignette = self.ctx.program(
-            vertex_shader="""
-                #version 330
-                in vec2 in_vert;
-                void main(){
-                    gl_Position = vec4(in_vert, 0., 1.);
-                }
-                """,
-            fragment_shader=frag,
-        )
-        self.vignette["t0"] = 0
-        self.vignette["screen_size"] = (self.width, self.height)
-    def init_pixelaion_shader(self):
-
-        with open("shaders/pixelation.glsl") as f:
-            frag = f.read()
-        self.pixelation = self.ctx.program(
-            vertex_shader="""
-                #version 330
-                in vec2 in_vert;
-                void main(){
-                    gl_Position = vec4(in_vert, 0., 1.);
-                }
-                """,
-            fragment_shader=frag,
-        )
-        self.pixelation["t0"] = 0
-        self.pixelation["cell_size"] = 3
-        self.pixelation["screen_size"] = (self.width, self.height)
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
-        self.tex = self.ctx.texture((width, height))
-        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
-        self.pixelation["screen_size"] = (width, height)
+        self.pix.resize(width, height)
+        self.pix["screen_size"] = (width, height)
+        self.pix["cell_size"] = 4.0
+        # self.vignette["screen_size"] = (width, height)
+        self.vig.resize(width, height)
+        self.vig["screen_size"] = (width, height)
+        self.camera = arcade.Camera2D()
 
     def all_draw(self):
         bc.sprite_all_draw.draw()
 
     def on_draw(self):
-        self.clear()
         self.camera.use()
-        self.fbo.clear(color = (255, 255, 255))
-        with self.fbo:
-            self.all_draw()
-        self.tex.use(0)
-        self.quad_fs.render(self.pixelation)
-        self.quad_fs.render(self.vignette)
+        # self.fbo.clear(color = (255, 255, 255))
+        self.vig.clear()
+        self.pix.clear()
+        with self.vig:
+            with self.pix:
+                self.all_draw()
+            self.pix.draw()
+        self.vig.draw()
+        # self.tex.use(0)
+        # self.quad_fs.render(self.pixelation)
+        # self.quad_fs.render(self.vignette)
 
     def on_update(self, dt: float):
         bc.phys.step(1/60)
@@ -317,6 +288,9 @@ class Window(arcade.Window):
         self.player.set_angle(self.mouse_pos)
         for enemy in enemies:
             enemy.update(dt)
+        new_camera_pos = self.player.pos
+        self.camera.position = new_camera_pos.__list__()
+        self.camera_pos = new_camera_pos
 
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
@@ -327,11 +301,13 @@ class Window(arcade.Window):
         self.player.on_key_release(key)
 
     def on_mouse_press(self, x, y, *_):
-        enemy = Enemy(Vec2(x, y), self.player)
+        pos = Vec2(x, y) + (self.camera_pos - Vec2(self.width/2, self.height/2))
+        enemy = Enemy(pos, self.player)
         enemies.append(enemy)
 
     def on_mouse_motion(self, x, y, *_):
-        self.mouse_pos = Vec2(x, y)
+        pos = Vec2(x, y) + (self.camera_pos - Vec2(self.width/2, self.height/2))
+        self.mouse_pos = pos
 
 
 def main():
