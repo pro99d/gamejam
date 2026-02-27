@@ -216,6 +216,8 @@ class Window(arcade.Window):
 
         self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
         self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
+        self.bg = helpers.Shader("shaders/bg.glsl", self.ctx, w= self.width, h= self.height)
+
 
         self.setup_collision_handlers()
         self.camera = arcade.Camera2D()
@@ -263,6 +265,11 @@ class Window(arcade.Window):
         # self.vignette["screen_size"] = (width, height)
         self.vig.resize(width, height)
         self.vig["screen_size"] = (width, height)
+
+        # self.bg["screen_size"] = (width, height)
+        self.bg["cell_size"] = 50
+        self.bg.resize(width, height)
+
         self.camera = arcade.Camera2D()
 
     def all_draw(self):
@@ -270,11 +277,14 @@ class Window(arcade.Window):
 
     def on_draw(self):
         self.camera.use()
+        self.bg["pos"] = self.camera_pos.__list__()
         # self.fbo.clear(color = (255, 255, 255))
         self.vig.clear()
         self.pix.clear()
+        self.bg.clear() 
         with self.vig:
             with self.pix:
+                self.bg.draw()
                 self.all_draw()
             self.pix.draw()
         self.vig.draw()
