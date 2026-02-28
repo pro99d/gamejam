@@ -95,5 +95,6 @@ void main()
     if (pow(stone_vor, 2) > 0.1) {
         col = vec3(0.5 * pow(stone_vor, 2) - vor);
     }
+    col *= 2;
     fragColor = vec4(col, 1.0);
 }

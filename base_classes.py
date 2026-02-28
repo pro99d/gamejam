@@ -114,7 +114,7 @@ class Rect:
 class Entity:
     def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], 
                  moment_of_inertia: float = PymunkPhysicsEngine.MOMENT_INF,
-                 collision_type: str = None, max_velocity: float = None, type_= PymunkPhysicsEngine.DYNAMIC):
+                 collision_type: str = None, max_velocity: float = None, type_= PymunkPhysicsEngine.DYNAMIC, friction= 0.7):
         self.pos: Vec2 = pos
         self.size = size
         self.angle = 0
@@ -126,7 +126,7 @@ class Entity:
         self.die_calls = []
         self.on_collide_events = []
         phys.add_sprite(self.rect,
-                        friction=0.7,
+                        friction=friction,
                         moment_of_inertia=moment_of_inertia,
                         damping=0.01,
                         collision_type=collision_type,

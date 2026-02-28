@@ -8,7 +8,9 @@ import random
 import helpers
 from weapons import *
 
+
 enemies = []
+walls = arcade.SpriteList()
 
 @dataclass
 class WearponData:
@@ -32,36 +34,51 @@ class Wall(bc.Entity):
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
-            pos, Vec2(45, 45), (255, 0, 0),
+            pos, Vec2(45, 45), (155, 0, 0),
             collision_type="Enemy",
+            friction= 0.01
         )
         self.target = target
         self.health = 100
         self.inv = False
-        self.type_ = 1 # TODO implement enemy types
+        self.damage = 20
+        self.type_ = 1
         self.rect.parent = self
 
     def update(self, dt):
         super().update(dt)
 
-        dp = self.target.pos - self.pos
-        self.angle = math.degrees(math.atan2(dp.x, dp.y))
-        speed = 600
-        self.velocity = dp.normalize()*speed
-        bc.phys.apply_force(self.rect, self.velocity.__list__())
         if self.health <= 0:
             self.die()
             enemies.remove(self)
+            return
+
+        # Direct chase toward player
+        dp = self.target.pos - self.pos
+        if dp.magnitude() > 0.01:
+            self.angle = math.degrees(math.atan2(dp.x, dp.y))
+
+            speed = 600
+            df = Vec2(0, 0)
+            
+            self.velocity = dp.normalize()*speed
+            bc.phys.apply_force(self.rect, self.velocity.__list__())
+
+    def draw(self):
+        pass
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
-        super().__init__(pos, Vec2(45, 45), (0, 255, 0), collision_type= "Player")
+        super().__init__(pos, Vec2(45, 45), (0, 255, 0), collision_type= "Player", friction= 0.0)
         self.keys = set() 
         self.weapon_number = 0
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(self), Shotgun(self), Crossbow(self), SniperRiffle(self)] 
         # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
         self.rect.parent = self
+        self.last_damage = 0
+        self.shoot = False
+        self.sources_damage = {}
 
     def set_angle(self, mouse_pos: Vec2):
 
@@ -103,15 +120,24 @@ class Player(bc.Entity):
         # update all childs
         for wearpon in self.weapon_list:
             wearpon.update(dt)
-        if arcade.key.SPACE in self.keys:
-
+        if arcade.key.SPACE in self.keys or self.shoot:
             self.weapon_list[self.weapon_number].shoot()
-
         return super().update(dt)
+
+    def take_damage(self, damage: int | float, source):
+        if source in self.sources_damage.keys():
+            if time.time() - self.sources_damage[self.last_damage] > 1:
+                self.health -= damage
+                self.sources_damage[source] = time.time()
+        else:
+            self.health -= damage
+            self.sources_damage[source] = time.time()
+
     def on_key_press(self, key):
         self.keys.add(key)
     def on_key_release(self, key):
-        self.keys.remove(key)
+        if key in self.keys:
+            self.keys.remove(key)
 
 class Window(arcade.Window):
     def __init__(self):
@@ -139,15 +165,14 @@ class Window(arcade.Window):
         self.screen_size = Vec2(self.width, self.height)
 
         aspect_ratio = self.width/self.height
-        deadzone_size = 100
+        deadzone_size = 00
         self.camera_deadzone = Vec2(deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
         self.setup()
 
     def setup(self):
-        global enemies
+        global enemies, barriers
         enemies.clear()
-        
-        # Kill all existing entities (iterate over a copy to avoid modification during iteration)
+        walls.clear() 
         for sprite in list(bc.sprite_all_draw):
             if hasattr(sprite, "parent") and hasattr(sprite.parent, "die"):
                 sprite.parent.die()
@@ -156,9 +181,8 @@ class Window(arcade.Window):
         
         self.level = helpers.LevelLoader.load_level("level.lvl")
         self.player = Player(self.level.spawn.pos)
-
         for wall in self.level.walls:
-            Wall(wall.pos, wall.size)
+            walls.append(Wall(wall.pos, wall.size).rect)
 
         for enemy in self.level.enemies:
             e = Enemy(enemy.pos, self.player)
@@ -175,7 +199,6 @@ class Window(arcade.Window):
                                 50,
                                 50
                                 )
-
     def get_world_from_screen(self, pos):
         return pos + (self.camera_pos - Vec2(self.width/2, self.height/2))
 
@@ -198,8 +221,10 @@ class Window(arcade.Window):
             player_sprite = sprite_from_arbiter(arbiter, 0)
             player = player_sprite.parent
             enemy = sprite_from_arbiter(arbiter, 1)
-            player.health -= enemy.parent.damage
+            player.take_damage(enemy.parent.damage, enemy.parent)
+            self.health_bar.value = player.health
             
+
 
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
@@ -209,6 +234,11 @@ class Window(arcade.Window):
             # bullet_sprite.remove_from_sprite_lists()
             # bullet_sprite.parent.die()
         
+        bc.phys.add_collision_handler(
+                "Player",
+                "Enemy",
+                post_handler= en_player_hit_handler
+                )
         bc.phys.add_collision_handler(
                 "Bullet",
                 "Enemy",
@@ -239,6 +269,8 @@ class Window(arcade.Window):
     def draw_ui(self):
         self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
         self.health_bar.draw()
+        for enemy in enemies:
+            enemy.draw()
 
         name_pos = self.get_world_from_screen(Vec2(10, self.height-15))
         weapon = self.player.weapon_list[self.player.weapon_number]
@@ -275,9 +307,12 @@ class Window(arcade.Window):
     def on_update(self, dt: float):
         bc.phys.step(1/60)
         self.player.update(dt)
+        if self.player.health <= 0:
+            self.setup()
         self.player.set_angle(self.mouse_pos)
         for enemy in enemies:
-            enemy.update(dt)
+            if enemy.rect in bc.phys.sprites:
+                enemy.update(dt)
 
         dp = self.player.pos - self.camera_pos
         if abs(dp.x) > self.camera_deadzone.x:
@@ -308,10 +343,14 @@ class Window(arcade.Window):
     def on_key_release(self, key, mod):
         self.player.on_key_release(key)
 
-    def on_mouse_press(self, x, y, *_):
-        pos = self.get_world_from_screen(Vec2(x, y))
-        enemy = Enemy(pos, self.player)
-        enemies.append(enemy)
+    def on_mouse_press(self, x, y, button, *_):
+        if button == 1:
+            self.player.shoot = True
+    def on_mouse_release(self,x, y, button, *_):
+        if button == 1: 
+            self.player.shoot = False
+        # enemy = Enemy(pos, self.player)
+        # enemies.append(enemy)
 
     def on_mouse_motion(self, x, y, *_):
         pos = self.get_world_from_screen(Vec2(x, y))

@@ -30,6 +30,7 @@ class Bullet(bc.Entity):
         self.angle = angle
         self.lifetime = 0
         self.die_calls = []
+        self.died = False
         # Calculate force based on angle and velocity
         # force = (Vec2(1, -1) * 2500).__list__()
         # print(force)
@@ -43,6 +44,8 @@ class Bullet(bc.Entity):
 
     def update(self, dt):
         self.lifetime += dt
+        if self.died:
+            return
         vel = bc.phys.get_physics_object(self.rect).body.velocity
         vel = Vec2(*vel).magnitude()
         # vel = self.rect.rescale_xy_relative_to_point
@@ -50,6 +53,9 @@ class Bullet(bc.Entity):
             self.die()
 
     def die(self):
+        self.died = True
+        if self.rect in bc.phys.sprites:
+            bc.phys.remove_sprite(self.rect)
         for call in self.die_calls:
             call(self)
         if self.rect in bc.sprite_all_draw:
@@ -100,14 +106,14 @@ class Wearpon:
             bullet.update(dt)
             if bullet.lifetime > self.prop.lifetime:
                 bullet.die()
-                self.bullets.remove(bullet)
+                if bullet in self.bullets:
+                    self.bullets.remove(bullet)
         if time.time() - self.last_shot >= self.prop.reload_time and self.bul_count_now == 0:
             self.bul_count_now = self.prop.bullet_count
 
     def shoot(self):
         if (time.time() - self.last_shot >= self.prop.reload) and self.bul_count_now > 0:
-            self.bullets.append(
-                Bullet(
+            bullet = Bullet(
 
                     pos= self.pos,
                     size= self.prop.size,
@@ -116,7 +122,8 @@ class Wearpon:
                     damage= self.prop.damage,
                     owner= self.parent
                 )
-            )
+            bullet.die_calls.append(lambda _: self.bullets.remove(bullet))
+            self.bullets.append(bullet)
             self.last_shot = time.time()
             self.bul_count_now -= 1
 
