@@ -10,7 +10,6 @@ from weapons import *
 
 enemies = []
 
-
 @dataclass
 class WearponData:
     reload: float
@@ -29,7 +28,6 @@ class Wall(bc.Entity):
         d = Vec2(size.x / -2, size.y / 2)
         p = self.pos 
 
-l1 = [Vec2(100, 200), Vec2(200, 200)]
 
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
@@ -57,18 +55,14 @@ class Enemy(bc.Entity):
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
-        super().__init__(pos, Vec2(45, 45), (0, 255, 0))
+        super().__init__(pos, Vec2(45, 45), (0, 255, 0), collision_type= "Player")
         self.keys = set() 
-        # self.pistol = Pistol(self)
-        # self.riffle = Riffle(self)
-        # self.shotgun = shotgun(self)
-        # self.crossbow = crossbow(self)
-        # self.sniper_riffle = sniper_riffle(self)
-        # self.machine_pistols = machine_pistols(self)
         self.weapon_number = 0
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(self), Shotgun(self), Crossbow(self), SniperRiffle(self)] 
         # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
+        self.rect.parent = self
+
     def set_angle(self, mouse_pos: Vec2):
 
         dp = self.pos -mouse_pos
@@ -124,16 +118,9 @@ class Window(arcade.Window):
         super().__init__(1920, 1080, "game for game jam", fullscreen= True)
         self.bloom = arcade.experimental.BloomFilter(
             self.width, self.height, 20)
-        self.level = helpers.LevelLoader.load_level("level.lvl")
-        self.player = Player(self.level.spawn.pos)
         self.mouse_pos = Vec2(1, 1)
         # self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
-        for wall in self.level.walls:
-            Wall(wall.pos, wall.size)
 
-        for enemy in self.level.enemies:
-            e = Enemy(enemy.pos, self.player)
-            enemies.append(e)
 
         self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
         self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
@@ -141,8 +128,6 @@ class Window(arcade.Window):
 
 
         self.setup_collision_handlers()
-        self.camera = arcade.Camera2D(position= self.player.pos.__list__())
-        self.camera_pos = self.player.pos
 
         self.vig_alp = 1.5
         self.vig["alpha"] = self.vig_alp
@@ -156,7 +141,31 @@ class Window(arcade.Window):
         aspect_ratio = self.width/self.height
         deadzone_size = 100
         self.camera_deadzone = Vec2(deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
+        self.setup()
 
+    def setup(self):
+        global enemies
+        enemies.clear()
+        
+        # Kill all existing entities (iterate over a copy to avoid modification during iteration)
+        for sprite in list(bc.sprite_all_draw):
+            if hasattr(sprite, "parent") and hasattr(sprite.parent, "die"):
+                sprite.parent.die()
+            else:
+                sprite.remove_from_sprite_lists()
+        
+        self.level = helpers.LevelLoader.load_level("level.lvl")
+        self.player = Player(self.level.spawn.pos)
+
+        for wall in self.level.walls:
+            Wall(wall.pos, wall.size)
+
+        for enemy in self.level.enemies:
+            e = Enemy(enemy.pos, self.player)
+            enemies.append(e)
+
+        self.camera = arcade.Camera2D(position= self.player.pos.__list__())
+        self.camera_pos = self.player.pos
 
         self.health_bar = bc.Bar(
                                 self.get_world_from_screen(Vec2(10, 10)),
@@ -172,24 +181,31 @@ class Window(arcade.Window):
 
     def setup_collision_handlers(self):
 
+        def sprite_from_arbiter(arbiter, num):
+            shape = arbiter.shapes[num]
+            sprite = bc.phys.get_sprite_for_shape(shape)
+            return sprite
+
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
-            bullet_shape = arbiter.shapes[0]
-            enemy_shape = arbiter.shapes[0]
-            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+            bullet_sprite =sprite_from_arbiter(arbiter, 0)
             bullet_sprite.parent.die()
-            enemy_shape = arbiter.shapes[1]
-            enemy_sprite = bc.phys.get_sprite_for_shape(enemy_shape)
+            enemy_sprite = sprite_from_arbiter(arbiter, 1)
             enemy_sprite.parent.health -= bullet_sprite.parent.damage
+            
+        def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
+            player_sprite = sprite_from_arbiter(arbiter, 0)
+            player = player_sprite.parent
+            enemy = sprite_from_arbiter(arbiter, 1)
+            player.health -= enemy.parent.damage
             
 
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/wall collision """
             # TODO add checks for types
-            bullet_shape = arbiter.shapes[0]
-            bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
+            bullet_sprite = sprite_from_arbiter(arbiter, 0)
             # bullet_sprite.remove_from_sprite_lists()
             # bullet_sprite.parent.die()
         
@@ -285,6 +301,8 @@ class Window(arcade.Window):
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
             arcade.close_window()
+        elif key == arcade.key.R:
+            self.setup()
         self.player.on_key_press(key)
 
     def on_key_release(self, key, mod):
