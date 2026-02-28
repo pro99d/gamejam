@@ -1,8 +1,9 @@
 #version 330
 
-uniform ivec2 screen_size;
+uniform vec2 screen_size;
 uniform float cell_size = 50;
 uniform vec2 pos = vec2(0.0, 0.0);
+uniform float zoom=1;
 out vec4 fragColor;
 
 const mat2 myt = mat2(.12121212, .13131313, -.13131313, .12121212);
@@ -40,7 +41,8 @@ vec3 mix(vec3 v1, vec3 v2, float a) {
 }
 
 float get_vor(vec2 dp) {
-    vec2 world_pos = gl_FragCoord.xy + pos;
+    vec2 centered = gl_FragCoord.xy - screen_size.xy / 2.0;
+    vec2 world_pos = pos + centered / zoom;
     return voronoi2d((world_pos + dp) / 30);
 }
 
@@ -77,7 +79,8 @@ float voronoi2d_web(const in vec2 point) {
 }
 void main()
 {
-    vec2 world_pos = gl_FragCoord.xy + pos;
+    vec2 centered = gl_FragCoord.xy - screen_size.xy / 2.0;
+    vec2 world_pos = pos + centered / zoom;
 
     ivec2 cell = ivec2(floor(world_pos.x / cell_size),
             floor(world_pos.y / cell_size));
