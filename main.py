@@ -6,59 +6,10 @@ import time
 import math
 import random
 import helpers
+from weapons import *
 
 enemies = []
 
-class Bullet(bc.Entity):
-    def __init__(
-        self, pos: Vec2, size: Vec2, vel: float, angle: float, damage: float, owner
-    ):
-        color = (235, 155, 90)
-
-
-
-        angle = -angle
-        ra = math.radians(angle)
-        self.pos = pos
-        dir = Vec2(math.cos(ra)/2, math.sin(ra))
-        size_p = max(owner.rect.width, owner.rect.height)
-        self.pos += size_p * dir
-        self.rect = arcade.SpriteSolidColor(size.y, size.x, self.pos.x, self.pos.y, color, angle)
-        self.rect.parent = self
-        bc.sprite_all_draw.append(self.rect)
-        bc.phys.add_sprite(self.rect, 0.09, collision_type= "Bullet", elasticity= 0.1)
-        bc.phys.update_sprite(self.rect)
-        self.owner = owner
-        self.damage = damage
-        self.angle = angle
-        self.lifetime = 0
-        self.die_calls = []
-        # Calculate force based on angle and velocity
-        # force = (Vec2(1, -1) * 2500).__list__()
-        # print(force)
-        bc.phys.apply_force(self.rect, [5500, 0])
-
-        self.pos = Vec2(
-                self.rect.center_x,
-                self.rect.center_y,
-                )
-        # self.update(0)
-
-    def update(self, dt):
-        self.lifetime += dt
-        vel = bc.phys.get_physics_object(self.rect).body.velocity
-        vel = Vec2(*vel).magnitude()
-        # vel = self.rect.rescale_xy_relative_to_point
-        if 0<vel < 200:
-            self.die()
-
-    def die(self):
-        for call in self.die_calls:
-            call(self)
-        if self.rect in bc.sprite_all_draw:
-            bc.sprite_all_draw.remove(self.rect)
-        # self.rect.kill()
-        # self.owner.bullets.remove(self)
 
 @dataclass
 class WearponData:
@@ -67,27 +18,52 @@ class WearponData:
     spread: float
     size: Vec2
     lifetime: float
-    
-class Wall(bc.Entity):
-    def __init__(self, pos: Vec2, size: Vec2= Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), collision_type= arcade.PymunkPhysicsEngine.STATIC)
 
-        
+
+class Wall(bc.Entity):
+    def __init__(self, pos: Vec2, size: Vec2 = Vec2(50, 50)):
+        super().__init__(pos, size, (100, 100, 100), moment_of_inertia= bc.PymunkPhysicsEngine.MOMENT_INF, collision_type= "Wall", type_ = bc.PymunkPhysicsEngine.STATIC)
+        a = size.__div__(2)
+        b = size.__div__(-2)
+        c = Vec2(size.x / 2, size.y / -2)
+        d = Vec2(size.x / -2, size.y / 2)
+        p = self.pos 
+
 l1 = [Vec2(100, 200), Vec2(200, 200)]
 
+class Enemy(bc.Entity):
+    def __init__(self, pos: Vec2, target: bc.Entity):
+        super().__init__(
+            pos, Vec2(50, 50), (255, 0, 0),
+            collision_type="Enemy",
+        )
+        self.target = target
+        self.health = 100
+        self.inv = False
+
+    def update(self, dt):
+        super().update(dt)
+
+        dp = self.target.pos - self.pos
+        self.angle = math.degrees(math.atan2(dp.x, dp.y))
+        speed = 300
+        self.velocity = dp.normalize()*speed
+        bc.phys.apply_force(self.rect, self.velocity.__list__())
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
         super().__init__(pos, Vec2(50, 50), (0, 255, 0))
         self.keys = set() 
-        self.pistol = Pistol(self)
-        self.riffle = riffle(self)
-        self.shotgun = shotgun(self)
-        self.crossbow = crossbow(self)
-        self.sniper_riffle = sniper_riffle(self)
-        self.machine_pistols = machine_pistols(self)
-        self.weapon_number = weapon_number
-        self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
+        # self.pistol = Pistol(self)
+        # self.riffle = Riffle(self)
+        # self.shotgun = shotgun(self)
+        # self.crossbow = crossbow(self)
+        # self.sniper_riffle = sniper_riffle(self)
+        # self.machine_pistols = machine_pistols(self)
+        self.weapon_number = 0
+        self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(self), Shotgun(self), Crossbow(self), SniperRiffle(self)] 
+        # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
+        self.health = 50
     def set_angle(self, mouse_pos: Vec2):
 
         dp = self.pos -mouse_pos
@@ -96,11 +72,11 @@ class Player(bc.Entity):
         else:
             self.angle = 90
 
-    weapon_number = 1
+    weapon_number = 0
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 600
+        acc = 2500
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -110,12 +86,27 @@ class Player(bc.Entity):
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
         bc.phys.apply_force(self.rect, dv.__list__())
+
+        if arcade.key.KEY_1 in self.keys:
+            self.weapon_number = 0
+        if arcade.key.KEY_2 in self.keys:
+            self.weapon_number = 1
+        if arcade.key.KEY_3 in self.keys:
+            self.weapon_number = 2
+        if arcade.key.KEY_4 in self.keys:
+            self.weapon_number = 3
+        if arcade.key.KEY_5 in self.keys:
+            self.weapon_number = 4
+        if arcade.key.KEY_6 in self.keys:
+            self.weapon_number = 5
         # if self.velocity.magnitude() < acc * 10:
             # self.velocity += dv
         # update all childs
-        self.pistol.update(dt)
+        for wearpon in self.weapon_list:
+            wearpon.update(dt)
         if arcade.key.SPACE in self.keys:
-            self.weapon_list[weapon_number].shoot()
+
+            self.weapon_list[self.weapon_number].shoot()
 
         return super().update(dt)
     def on_key_press(self, key):
@@ -174,7 +165,6 @@ class Window(arcade.Window):
             # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
-            bullet_sprite.remove_from_sprite_lists()
             bullet_sprite.parent.die()
 
 
@@ -216,6 +206,16 @@ class Window(arcade.Window):
     def draw_ui(self):
         self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
         self.health_bar.draw()
+
+        name_pos = self.get_world_from_screen(Vec2(10, self.height-15))
+        weapon = self.player.weapon_list[self.player.weapon_number]
+        name = weapon.__repr__()
+        arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
+        bullets = weapon.bul_count_now
+        arcade.draw_text(f"bullets left: {bullets}", name_pos.x, name_pos.y - 15)
+        if bullets == 0:
+            arcade.draw_text(f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
+
 
     # def get_world_from
 
