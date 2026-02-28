@@ -207,7 +207,7 @@ class Player(bc.Entity):
 
 class Window(arcade.Window):
     def __init__(self):
-        super().__init__(800, 600, "game for game jam")
+        super().__init__(1920, 1080, "game for game jam", fullscreen= True)
         self.bloom = arcade.experimental.BloomFilter(
             self.width, self.height, 20)
         self.player = Player(Vec2(400, 400))
@@ -220,9 +220,34 @@ class Window(arcade.Window):
 
 
         self.setup_collision_handlers()
-        self.camera = arcade.Camera2D()
-        self.camera_pos = Vec2(0, 0)
+        self.camera = arcade.Camera2D(position= self.player.pos.__list__())
+        self.camera_pos = self.player.pos
 
+        self.vig_alp = 1.5
+        self.vig["alpha"] = self.vig_alp
+        self.pix["cell_size"] = 5.0
+        self.vig["inner_radius"] = 0.0
+        self.vig["outer_radius"] = 0.9
+        self.bg["cell_size"] = 50
+        
+        self.screen_size = Vec2(self.width, self.height)
+
+        aspect_ratio = self.width/self.height
+        deadzone_size = 100
+        self.camera_deadzone = Vec2(deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
+
+
+        self.health_bar = bc.Bar(
+                                self.get_world_from_screen(Vec2(10, 10)),
+                                Vec2(300, 20),
+                                (255, 10, 10),
+                                (100, 100, 100),
+                                50,
+                                50
+                                )
+
+    def get_world_from_screen(self, pos):
+        return pos + (self.camera_pos - Vec2(self.width/2, self.height/2))
 
     def setup_collision_handlers(self):
 
@@ -230,10 +255,9 @@ class Window(arcade.Window):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
-            # arbiter.ignore = True
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
-            # bullet_sprite.remove_from_sprite_lists()
-            # bullet_sprite.parent.die()
+            bullet_sprite.remove_from_sprite_lists()
+            bullet_sprite.parent.die()
 
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
@@ -260,18 +284,10 @@ class Window(arcade.Window):
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
         self.pix.resize(width, height)
-        self.pix["screen_size"] = (width, height)
-        self.pix["cell_size"] = 4.0
-        # self.vignette["screen_size"] = (width, height)
-        self.vig.resize(width, height)
-        self.vig["screen_size"] = (width, height)
-        self.vig["inner_radius"] = 0.0
-        self.vig["outer_radius"] = 0.9
-        self.vig["alpha"] = 1
-        
+        self.screen_size = Vec2(width, height)
 
+        self.vig.resize(width, height)
         # self.bg["screen_size"] = (width, height)
-        self.bg["cell_size"] = 50
         self.bg.resize(width, height)
 
         self.camera = arcade.Camera2D()
@@ -279,9 +295,17 @@ class Window(arcade.Window):
     def all_draw(self):
         bc.sprite_all_draw.draw()
 
+    def draw_ui(self):
+        self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
+        self.health_bar.draw()
+
+    # def get_world_from
+
     def on_draw(self):
         self.camera.use()
         self.bg["pos"] = self.camera_pos.__list__()
+        self.pix["screen_size"] = (self.screen_size * self.camera.zoom).__list__()
+        self.vig["screen_size"] = (self.screen_size * self.camera.zoom).__list__()
         # self.fbo.clear(color = (255, 255, 255))
         self.vig.clear()
         self.pix.clear()
@@ -292,6 +316,7 @@ class Window(arcade.Window):
                 self.all_draw()
             self.pix.draw()
         self.vig.draw()
+        self.draw_ui()
         # self.tex.use(0)
         # self.quad_fs.render(self.pixelation)
         # self.quad_fs.render(self.vignette)
@@ -302,9 +327,25 @@ class Window(arcade.Window):
         self.player.set_angle(self.mouse_pos)
         for enemy in enemies:
             enemy.update(dt)
-        new_camera_pos = self.player.pos
+
+        dp = self.player.pos - self.camera_pos
+        if abs(dp.x) > self.camera_deadzone.x:
+            dp.x -= math.copysign(self.camera_deadzone.x, dp.x)
+        else:
+            dp.x = 0
+
+        if abs(dp.y) > self.camera_deadzone.y:
+            dp.y -= math.copysign(self.camera_deadzone.y, dp.y)
+        else:
+            dp.y = 0
+
+        new_camera_pos = self.camera_pos + dp
         self.camera.position = new_camera_pos.__list__()
         self.camera_pos = new_camera_pos
+        self.vig["alpha"] = self.vig_alp
+        
+        self.health_bar.value = self.player.health
+
 
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
@@ -315,12 +356,12 @@ class Window(arcade.Window):
         self.player.on_key_release(key)
 
     def on_mouse_press(self, x, y, *_):
-        pos = Vec2(x, y) + (self.camera_pos - Vec2(self.width/2, self.height/2))
+        pos = self.get_world_from_screen(Vec2(x, y))
         enemy = Enemy(pos, self.player)
         enemies.append(enemy)
 
     def on_mouse_motion(self, x, y, *_):
-        pos = Vec2(x, y) + (self.camera_pos - Vec2(self.width/2, self.height/2))
+        pos = self.get_world_from_screen(Vec2(x, y))
         self.mouse_pos = pos
 
 
@@ -331,3 +372,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

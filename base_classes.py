@@ -191,8 +191,16 @@ class Bar:
         self.max_value = max_value
         self.text_pos = Vec2(
             pos.x + size.x/2,
-            pos.y,
+            pos.y + size.y/2 - 5,
         )
+
+    def update_pos(self, pos):
+        self.pos = pos
+        self.text_pos = Vec2(
+            pos.x + self.size.x/2,
+            pos.y + self.size.y/2 - 5,
+        )
+
 
     def draw(self):
         arcade.draw_lbwh_rectangle_filled(self.pos.x, self.pos.y, self.size.x, self.size.y, self.bg_color)
