@@ -41,15 +41,19 @@ class Enemy(bc.Entity):
         self.health = 100
         self.inv = False
         self.type_ = 1 # TODO implement enemy types
+        self.rect.parent = self
 
     def update(self, dt):
         super().update(dt)
 
         dp = self.target.pos - self.pos
         self.angle = math.degrees(math.atan2(dp.x, dp.y))
-        speed = 300
+        speed = 600
         self.velocity = dp.normalize()*speed
         bc.phys.apply_force(self.rect, self.velocity.__list__())
+        if self.health <= 0:
+            self.die()
+            enemies.remove(self)
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
@@ -172,8 +176,13 @@ class Window(arcade.Window):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
             bullet_shape = arbiter.shapes[0]
+            enemy_shape = arbiter.shapes[0]
             bullet_sprite = bc.phys.get_sprite_for_shape(bullet_shape)
             bullet_sprite.parent.die()
+            enemy_shape = arbiter.shapes[1]
+            enemy_sprite = bc.phys.get_sprite_for_shape(enemy_shape)
+            enemy_sprite.parent.health -= bullet_sprite.parent.damage
+            
 
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):

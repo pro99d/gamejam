@@ -5,14 +5,14 @@ import helpers
 from main import Wall, Enemy
 from base_classes import sprite_all_draw
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 SCREEN_TITLE = "Level Editor"
 
 
 class Window(arcade.Window):
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, fullscreen= True)
         arcade.set_background_color(arcade.color.DARK_GREEN)
         self.camera = arcade.Camera2D()
         self.grid_shader = helpers.Shader("shaders/grid.glsl", self.ctx)
@@ -58,7 +58,7 @@ class Window(arcade.Window):
         arcade.draw_text("2 for enter enemy mode.", pos.x, pos.y + 15)
         arcade.draw_text("3 for enter spawn point mode.", pos.x, pos.y)
         arcade.draw_text("LMB for place, RMB for delete", pos.x, pos.y + self.height - 30)
-        arcade.draw_text("0 0", 0, 0)
+        arcade.draw_text("spawn", *self.level.spawn.pos.__list__())
         
     def on_update(self, dt):
         self.camera_pos = Vec2(*self.camera.position)
@@ -82,6 +82,8 @@ class Window(arcade.Window):
             self.mode = 1
         elif symbol == arcade.key.KEY_2:
             self.mode = 2
+        elif symbol == arcade.key.KEY_3:
+            self.mode = 3
         elif symbol == arcade.key.SPACE:
             helpers.LevelLoader.save_level("level.lvl", self.level)
 
@@ -102,6 +104,8 @@ class Window(arcade.Window):
             elif self.mode == 2:
                 enemy = Enemy(pos, None)
                 self.level.enemies.append(enemy)
+            elif self.mode == 3:
+                self.level.spawn.pos = pos
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             for enemy in self.level.enemies:
                 if enemy.rect.collides_with_point(pos.__list__()):
