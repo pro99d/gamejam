@@ -120,7 +120,7 @@ class LevelLoader:
                     pointer += 1
                     wd = WallData(Vec2(x, y), Vec2(size_x, size_y))
                     content.walls.append(wd)
-                case 0: # enemy
+                case 2: # enemy
                     if pointer+2 >= len(level):
                         raise ValueError("Wrong level format!")
                     x = float(level[pointer])

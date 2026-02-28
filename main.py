@@ -34,12 +34,13 @@ l1 = [Vec2(100, 200), Vec2(200, 200)]
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
-            pos, Vec2(50, 50), (255, 0, 0),
+            pos, Vec2(45, 45), (255, 0, 0),
             collision_type="Enemy",
         )
         self.target = target
         self.health = 100
         self.inv = False
+        self.type_ = 1 # TODO implement enemy types
 
     def update(self, dt):
         super().update(dt)
@@ -52,7 +53,7 @@ class Enemy(bc.Entity):
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
-        super().__init__(pos, Vec2(50, 50), (0, 255, 0))
+        super().__init__(pos, Vec2(45, 45), (0, 255, 0))
         self.keys = set() 
         # self.pistol = Pistol(self)
         # self.riffle = Riffle(self)
@@ -119,9 +120,16 @@ class Window(arcade.Window):
         super().__init__(1920, 1080, "game for game jam", fullscreen= True)
         self.bloom = arcade.experimental.BloomFilter(
             self.width, self.height, 20)
-        self.player = Player(Vec2(400, 400))
+        self.level = helpers.LevelLoader.load_level("level.lvl")
+        self.player = Player(self.level.spawn.pos)
         self.mouse_pos = Vec2(1, 1)
-        self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
+        # self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
+        for wall in self.level.walls:
+            Wall(wall.pos, wall.size)
+
+        for enemy in self.level.enemies:
+            e = Enemy(enemy.pos, self.player)
+            enemies.append(e)
 
         self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
         self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
