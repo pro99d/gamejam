@@ -155,6 +155,7 @@ class Entity:
             self.rect.center_y = -1000
             self.rect.center_x = -1000
             sprite_all_draw.remove(self.rect)
+        self.rect.remove_from_sprite_lists()
 
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))

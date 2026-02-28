@@ -47,12 +47,19 @@ class Bullet(bc.Entity):
 
     def update(self, dt):
         self.lifetime += dt
+        vel = bc.phys.get_physics_object(self.rect).body.velocity
+        vel = Vec2(*vel).magnitude()
+        # vel = self.rect.rescale_xy_relative_to_point
+        if 0<vel < 200:
+            self.die()
 
     def die(self):
         for call in self.die_calls:
             call(self)
         if self.rect in bc.sprite_all_draw:
             bc.sprite_all_draw.remove(self.rect)
+        # self.rect.kill()
+        # self.owner.bullets.remove(self)
 
 @dataclass
 class WearponData:
@@ -227,8 +234,8 @@ class Window(arcade.Window):
         self.vig["alpha"] = self.vig_alp
         self.pix["cell_size"] = 5.0
         self.vig["inner_radius"] = 0.0
-        self.vig["outer_radius"] = 0.9
-        self.bg["cell_size"] = 50
+        self.vig["outer_radius"] = 1.0
+        # self.bg["screen_size"] = (1920, 1080)
         
         self.screen_size = Vec2(self.width, self.height)
 
