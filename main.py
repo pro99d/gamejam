@@ -126,7 +126,7 @@ class Player(bc.Entity):
 
     def take_damage(self, damage: int | float, source):
         if source in self.sources_damage.keys():
-            if time.time() - self.sources_damage[self.last_damage] > 1:
+            if time.time() - self.sources_damage[source] > 1:
                 self.health -= damage
                 self.sources_damage[source] = time.time()
         else:

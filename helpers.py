@@ -135,6 +135,23 @@ class LevelLoader:
                     raise ValueError("Wrong level format!")
         return content
     @staticmethod
+    def remove_dublicates(level: Level):
+        positions = []
+        for wall in level.walls:
+            if wall.pos.__list__() in positions:
+                level.walls.remove(wall)
+            else:
+                positions.append(wall.pos.__list__())
+
+        for enemy in level.enemies:
+            if enemy.pos.__list__() in positions:
+                level.enemies.remove(enemy)
+            else:
+                positions.append(enemy.pos.__list__())
+
+        return level
+
+    @staticmethod
     def to_str(content: Level) -> bytes:
         level = ""
         level += "0/"
@@ -162,6 +179,7 @@ class LevelLoader:
         return LevelLoader.from_str(content)
     @staticmethod
     def save_level(path: str, level: Level):
+        level = LevelLoader.remove_dublicates(level)
         lvl_string = LevelLoader.to_str(level)
         with open(path, 'wb') as file:
             file.write(lvl_string)
