@@ -30,6 +30,40 @@ class Wall(bc.Entity):
         d = Vec2(size.x / -2, size.y / 2)
         p = self.pos 
 
+class InteractiveEntity(bc.Entity):
+    def __init__(self, pos: Vec2):
+        super().__init__(
+                pos,
+                Vec2(50, 50),
+                (203, 138, 39),
+                collision_type= "IntEntity",
+                type_= bc.PymunkPhysicsEngine.STATIC
+                )
+        # TODO add HUD
+        self.trigger = arcade.SpriteCircle(50, (255, 255, 255), False, *pos.__list__())
+        self.trigger.alpha = 0
+        # bc.sprite_all_draw.append(self.rect)
+        bc.phys.add_sprite(self.trigger, collision_type="trigger")
+        po = bc.phys.get_physics_object(self.trigger)
+        po.shape.sensor = True
+        self.player_inside = False
+
+        def on_player_exit(*_):
+            self.player_inside = False
+
+        def on_player_enter(*_):
+            self.player_inside = True
+            return True
+        bc.phys.add_collision_handler(
+                "trigger",
+                "Player",
+                begin_handler= on_player_enter,
+                separate_handler= on_player_exit
+                )
+
+    def on_draw(self):
+        if self.player_inside:
+            arcade.draw_text(f"PRESS E TO USE", *self.pos.__list__())
 
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
@@ -147,7 +181,6 @@ class Window(arcade.Window):
         self.mouse_pos = Vec2(1, 1)
         # self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
-
         self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
         self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
         self.bg = helpers.Shader("shaders/bg.glsl", self.ctx, w= self.width, h= self.height)
@@ -179,6 +212,7 @@ class Window(arcade.Window):
             else:
                 sprite.remove_from_sprite_lists()
         
+        self.test_int = InteractiveEntity(Vec2(180, 0))
         self.level = helpers.LevelLoader.load_level("level.lvl")
         self.player = Player(self.level.spawn.pos)
         for wall in self.level.walls:
@@ -280,6 +314,8 @@ class Window(arcade.Window):
         arcade.draw_text(f"bullets left: {bullets}", name_pos.x, name_pos.y - 15)
         if bullets == 0:
             arcade.draw_text(f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
+
+        self.test_int.on_draw()
 
 
     # def get_world_from
