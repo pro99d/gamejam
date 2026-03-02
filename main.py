@@ -36,13 +36,11 @@ class InteractiveEntity(bc.Entity):
                 pos,
                 Vec2(50, 50),
                 (203, 138, 39),
-                collision_type= "IntEntity",
                 type_= bc.PymunkPhysicsEngine.STATIC
                 )
         # TODO add HUD
         self.trigger = arcade.SpriteCircle(50, (255, 255, 255), False, *pos.__list__())
         self.trigger.alpha = 0
-        # bc.sprite_all_draw.append(self.rect)
         bc.phys.add_sprite(self.trigger, collision_type="trigger")
         po = bc.phys.get_physics_object(self.trigger)
         po.shape.sensor = True
