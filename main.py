@@ -30,6 +30,47 @@ class Wall(bc.Entity):
         d = Vec2(size.x / -2, size.y / 2)
         p = self.pos 
 
+class Trigger:
+    def __init__(self, on_enter, on_exit, pos: Vec2, radius=50, sprite=None):
+        if sprite == None:
+            self.shape = arcade.SpriteCircle(50, (0, 0, 0), False, *pos.__list__())
+        else:
+            self.shape = sprite
+        self.pos = pos
+        bc.phys.add_sprite(self.shape, collision_type= "Trigger")
+        physics_object = bc.phys.get_physics_object(self.shape)
+        physics_object.shape.sensor = True
+        first_time = False
+
+        def exit_handler(*_):
+            on_exit()
+
+        def enter_handler(sprite_a, sprite_b, *_):
+            nonlocal first_time
+            if first_time:
+                on_enter()
+                return True
+            else:
+                first_time = True
+                return False
+
+        bc.phys.add_collision_handler(
+                "Trigger",
+                "Player",
+                begin_handler= enter_handler,
+                separate_handler= exit_handler 
+                )
+        
+    
+    @property
+    def pos(self):
+        return self._pos
+    @pos.setter
+    def pos(self, value: Vec2):
+        self._pos = value    
+        self.shape.center_x, self.shape.center_y = value.__list__()
+
+
 class InteractiveEntity(bc.Entity):
     def __init__(self, pos: Vec2):
         super().__init__(
@@ -38,37 +79,30 @@ class InteractiveEntity(bc.Entity):
                 (203, 138, 39),
                 type_= bc.PymunkPhysicsEngine.STATIC
                 )
-        # TODO add HUD
-        self.trigger = arcade.SpriteCircle(50, (255, 255, 255), False, *pos.__list__())
-        self.trigger.alpha = 0
-        bc.phys.add_sprite(self.trigger, collision_type="trigger")
-        po = bc.phys.get_physics_object(self.trigger)
-        po.shape.sensor = True
         self.player_inside = False
 
-        def on_player_exit(*_):
+        def on_player_exit():
             self.player_inside = False
 
-        def on_player_enter(*_):
+        def on_player_enter():
             self.player_inside = True
-            return True
-        bc.phys.add_collision_handler(
-                "trigger",
-                "Player",
-                begin_handler= on_player_enter,
-                separate_handler= on_player_exit
-                )
+
+        self.trigger = Trigger(on_player_enter, on_player_exit, pos)
+
 
     def on_draw(self):
+        # print(self.player_inside)
+        # exit()
         if self.player_inside:
             arcade.draw_text(f"PRESS E TO USE", *self.pos.__list__())
+
 
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
             pos, Vec2(45, 45), (155, 0, 0),
             collision_type="Enemy",
-            friction= 0.01
+            friction= 0.05
         )
         self.target = target
         self.health = 100
