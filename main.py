@@ -123,6 +123,12 @@ class Item:
         self.trigger = Trigger(on_player_enter, on_player_exit, pos, 10)
 
 
+@dataclass
+class WeapDrawItem:
+    name: str
+    def draw(self, x, y):
+        arcade.draw_text(self.name, x, y)
+
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
@@ -133,7 +139,7 @@ class Enemy(bc.Entity):
         self.target = target
         self.health = 100
         self.inv = False
-        self.damage = 20
+        self.damage = 25
         self.type_ = 1
         self.rect.parent = self
 
@@ -169,7 +175,7 @@ class Player(bc.Entity):
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
             self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
         self.active_weapon_sprite = arcade.SpriteList()
-        self.available_weapons = [self.weapon_list[0]]
+        self.available_weapons = [self.weapon_list[0], self.weapon_list[1]]
         self.health = 50
         self.rect.parent = self
         self.last_damage = 0
@@ -193,7 +199,7 @@ class Player(bc.Entity):
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 2000
+        acc = 1000
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -298,11 +304,10 @@ class Window(arcade.Window):
         self.player = Player(self.level.spawn.pos)
         for wall in self.level.walls:
             walls.append(Wall(wall.pos, wall.size).rect)
-
+        
         for enemy in self.level.enemies:
             e = Enemy(enemy.pos, self.player)
             enemies.append(e)
-
         self.camera = arcade.Camera2D(position=self.player.pos.list)
         self.camera_pos = self.player.pos
 
@@ -314,6 +319,11 @@ class Window(arcade.Window):
             50,
             50
         )
+
+        self.inventory_pos = Vec2(10, self.height-85)
+        pos = self.get_world_from_screen(self.inventory_pos)
+        items = [WeapDrawItem(i.__repr__()) for i in self.player.available_weapons]
+        self.item_bar = bc.ItemBar(pos, items, 50, 10)
 
     def get_world_from_screen(self, pos):
         return pos + (self.camera_pos - Vec2(self.width/2, self.height/2))
@@ -386,14 +396,23 @@ class Window(arcade.Window):
         name_pos = self.get_world_from_screen(Vec2(10, self.height-15))
         weapon = self.player.available_weapons[self.player.weapon_number]
         name = weapon.__repr__()
-        arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
+        # arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
         bullets = weapon.bul_count_now
         arcade.draw_text(
-            f"bullets left: {bullets}", name_pos.x, name_pos.y - 15)
+            f"bullets left: {bullets}", name_pos.x, name_pos.y - 65)
         if bullets == 0:
             arcade.draw_text(
-                f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
+                f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 85)
+        self.item_bar.bottom_left_pos = self.get_world_from_screen(self.inventory_pos)
 
+        number = len(self.player.available_weapons)
+        self.item_bar.item_count = number
+        self.item_bar.active = self.player.weapon_number
+        items_all = len(self.item_bar.items)
+        if number >= items_all:
+            for _ in range(number-items_all):
+                self.item_bar.items.append(None)
+        self.item_bar.draw()
         self.test_int.on_draw()
 
     def on_draw(self):
