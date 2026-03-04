@@ -43,12 +43,12 @@ class Trigger:
         first_time = False
 
         def exit_handler(*_):
-            on_exit()
+            on_exit(*_)
 
-        def enter_handler(sprite_a, sprite_b, *_):
+        def enter_handler(*_):
             nonlocal first_time
             if first_time:
-                on_enter()
+                on_enter(*_)
                 return True
             else:
                 first_time = True
@@ -70,6 +70,8 @@ class Trigger:
         self._pos = value    
         self.shape.center_x, self.shape.center_y = value.__list__()
 
+    def die(self):
+        self.shape.remove_from_sprite_lists()
 
 class InteractiveEntity(bc.Entity):
     def __init__(self, pos: Vec2):
@@ -81,21 +83,34 @@ class InteractiveEntity(bc.Entity):
                 )
         self.player_inside = False
 
-        def on_player_exit():
+        def on_player_exit(*_):
             self.player_inside = False
 
-        def on_player_enter():
+        def on_player_enter(*_):
             self.player_inside = True
 
         self.trigger = Trigger(on_player_enter, on_player_exit, pos)
 
 
     def on_draw(self):
-        # print(self.player_inside)
-        # exit()
         if self.player_inside:
-            arcade.draw_text(f"PRESS E TO USE", *self.pos.__list__())
+            arcade.draw_text(f"PRESS E TO USE, (WIP)", *self.pos.__list__())
 
+class Item:
+    def __init__(self, pos: Vec, item_to_add):
+
+        self.player_entered = False
+        self.item = item_to_add 
+        def on_player_exit(*_):
+            self.player_entered = False
+
+        def on_player_enter(trig, player, *_):
+            self.player_entered = True
+            player.parent.items.append(self.item)
+            player.parent.update_items()
+            self.trigger.die()
+
+        self.trigger = Trigger(on_player_enter, on_player_exit, pos, 10)
 
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
@@ -139,26 +154,32 @@ class Player(bc.Entity):
         self.keys = set() 
         self.weapon_number = 0
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(self), Shotgun(self), Crossbow(self), SniperRiffle(self)] 
+        self.available_weapons = [Pistol(self)]
         # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
         self.rect.parent = self
         self.last_damage = 0
         self.shoot = False
         self.sources_damage = {}
+        self.items = []
+
+    def update_items(self):
+        for item in self.items:
+            if item in self.weapon_list:
+                self.available_weapons.append(item)
+                self.items.remove(item)
 
     def set_angle(self, mouse_pos: Vec2):
-
         dp = self.pos -mouse_pos
         if dp.y:
             self.angle = math.degrees(math.atan2(dp.x, dp.y))
         else:
             self.angle = 90
 
-    weapon_number = 0
     def update(self, dt: float):
         self.velocity *= 0.90
         dv = Vec2(0, 0)
-        acc = 2500
+        acc = 2000
         if arcade.key.W in self.keys:
             dv += Vec2(0, acc)
         if arcade.key.S in self.keys:
@@ -169,6 +190,7 @@ class Player(bc.Entity):
             dv += Vec2(-acc, 0)
         bc.phys.apply_force(self.rect, dv.__list__())
 
+        weapon_number = self.weapon_number
         if arcade.key.KEY_1 in self.keys:
             self.weapon_number = 0
         if arcade.key.KEY_2 in self.keys:
@@ -181,13 +203,16 @@ class Player(bc.Entity):
             self.weapon_number = 4
         if arcade.key.KEY_6 in self.keys:
             self.weapon_number = 5
+
+        if self.weapon_number >= len(self.available_weapons):
+            self.weapon_number = weapon_number
         # if self.velocity.magnitude() < acc * 10:
             # self.velocity += dv
         # update all childs
-        for wearpon in self.weapon_list:
-            wearpon.update(dt)
         if arcade.key.SPACE in self.keys or self.shoot:
-            self.weapon_list[self.weapon_number].shoot()
+            self.available_weapons[self.weapon_number].shoot()
+        for wearpon in self.available_weapons:
+            wearpon.update(dt)
         return super().update(dt)
 
     def take_damage(self, damage: int | float, source):
