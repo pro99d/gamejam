@@ -163,7 +163,7 @@ class Player(bc.Entity):
         self.weapon_number = 0
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
             self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
-        self.available_weapons = [Pistol(self)]
+        self.available_weapons = [self.weapon_list[0]]
         # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
         self.rect.parent = self
@@ -220,7 +220,7 @@ class Player(bc.Entity):
         # update all childs
         if arcade.key.SPACE in self.keys or self.shoot:
             self.available_weapons[self.weapon_number].shoot()
-        for wearpon in self.available_weapons:
+        for wearpon in self.weapon_list:
             wearpon.update(dt)
         return super().update(dt)
 
@@ -374,7 +374,7 @@ class Window(arcade.Window):
             enemy.draw()
 
         name_pos = self.get_world_from_screen(Vec2(10, self.height-15))
-        weapon = self.player.weapon_list[self.player.weapon_number]
+        weapon = self.player.available_weapons[self.player.weapon_number]
         name = weapon.__repr__()
         arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
         bullets = weapon.bul_count_now
@@ -385,8 +385,6 @@ class Window(arcade.Window):
                 f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
 
         self.test_int.on_draw()
-
-    # def get_world_from
 
     def on_draw(self):
         self.camera.use()

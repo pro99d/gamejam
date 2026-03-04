@@ -32,9 +32,6 @@ class Bullet(bc.Entity):
         self.lifetime = 0
         self.die_calls = []
         self.died = False
-        # Calculate force based on angle and velocity
-        # force = (Vec2(1, -1) * 2500).__list__()
-        # print(force)
         bc.phys.apply_force(self.rect, [5500, 0])
 
         self.pos = Vec2(
@@ -75,12 +72,10 @@ class WearponData:
     size: Vec2
     lifetime: float
 
-
 class Wearpon:
     def __init__(self, parent: bc.Entity):
         self.parent = parent
         self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
-        bc.sprite_all_draw.append(self.sprite)
         self.prop = WearponData(
             bullet_count=6,
             reload=0.1,
@@ -90,9 +85,11 @@ class Wearpon:
             lifetime=5.0,
             reload_time=1
         )
+        bc.sprite_all_draw.append(self.sprite)
         self.bul_count_now = self.prop.bullet_count
         self.last_shot = 0
         self.bullets = []
+        bc.types_draw_list.append(self.sprite)
         self.update(0)
 
     def __repr__(self):
@@ -104,7 +101,6 @@ class Wearpon:
         self.sprite.angle = self.parent.angle
         self.pos = Vec2(self.sprite.center_x, self.sprite.center_y)
         self.angle = self.sprite.angle-90
-
         for bullet in self.bullets:
             bullet.update(dt)
             if bullet.lifetime > self.prop.lifetime:
@@ -130,6 +126,7 @@ class Wearpon:
             self.bullets.append(bullet)
             self.last_shot = time.time()
             self.bul_count_now -= 1
+            # print(self.bul_count_now)
 
     def die(self):
         bc.sprite_all_draw.remove(self.sprite)

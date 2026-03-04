@@ -6,9 +6,9 @@ from arcade.pymunk_physics_engine import PymunkPhysicsEngine
 
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
+types_draw_list = []
 
 phys = PymunkPhysicsEngine((0, 0), 0.7)
-
 
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
