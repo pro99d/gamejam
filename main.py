@@ -101,18 +101,23 @@ class InteractiveEntity(bc.Entity):
 
 
 class Item:
-    def __init__(self, pos: Vec, item_to_add):
+    def __init__(self, pos: Vec2, item: int):
 
         self.player_entered = False
-        self.item = item_to_add
+        self.item = item
 
         def on_player_exit(*_):
             self.player_entered = False
 
         def on_player_enter(trig, player, *_):
             self.player_entered = True
-            player.parent.items.append(self.item)
-            player.parent.update_items()
+            player = player.parent
+            if self.item <= 5: # weapon count - 1
+                player.available_weapons.append(player.weapon_list[self.item])
+            else:
+                player.items.append(self.item)
+                player.update_items()
+
             self.trigger.die()
 
         self.trigger = Trigger(on_player_enter, on_player_exit, pos, 10)
@@ -163,8 +168,8 @@ class Player(bc.Entity):
         self.weapon_number = 0
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
             self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
+        self.active_weapon_sprite = arcade.SpriteList()
         self.available_weapons = [self.weapon_list[0]]
-        # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
         self.rect.parent = self
         self.last_damage = 0
@@ -215,6 +220,11 @@ class Player(bc.Entity):
 
         if self.weapon_number >= len(self.available_weapons):
             self.weapon_number = weapon_number
+        for i in self.active_weapon_sprite:
+            i.remove_from_sprite_lists()
+        sprite = self.weapon_list[self.weapon_number].sprite
+        self.active_weapon_sprite.append(sprite)
+        bc.sprite_all_draw.append(sprite)
         # if self.velocity.magnitude() < acc * 10:
             # self.velocity += dv
         # update all childs

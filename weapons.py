@@ -85,11 +85,10 @@ class Wearpon:
             lifetime=5.0,
             reload_time=1
         )
-        bc.sprite_all_draw.append(self.sprite)
+        # bc.sprite_all_draw.append(self.sprite)
         self.bul_count_now = self.prop.bullet_count
         self.last_shot = 0
         self.bullets = []
-        bc.types_draw_list.append(self.sprite)
         self.update(0)
 
     def __repr__(self):
