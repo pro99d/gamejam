@@ -1,9 +1,10 @@
 import math
 
+
 def rotate_point(point, angle_degrees):
     # Convert angle from degrees to radians
     angle_radians = math.radians(angle_degrees)
-    
+
     # Define the rotation matrix
     cos_angle = math.cos(angle_radians)
     sin_angle = math.sin(angle_radians)
@@ -14,6 +15,7 @@ def rotate_point(point, angle_degrees):
 
     return (x_new, y_new)
 
+
 # Example usage
 point = (1, 0)  # Original point
 angle = 90      # Angle in degrees
@@ -21,4 +23,3 @@ angle = 90      # Angle in degrees
 rotated_point = rotate_point(point, angle)
 print(f"Original point: {point}")
 print(f"Rotated point by {angle} degrees: {rotated_point}")
-

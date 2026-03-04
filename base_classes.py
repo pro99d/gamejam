@@ -1,4 +1,3 @@
-from PIL.Image import new
 import math
 import json
 import arcade
@@ -10,6 +9,7 @@ waiting_list: list[arcade.SpriteSolidColor] = []
 
 phys = PymunkPhysicsEngine((0, 0), 0.7)
 
+
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
         self._dict = {}
@@ -19,11 +19,11 @@ class Vec2:
         self._y = 0
         self.x = x
         self.y = y
-        
 
     @property
     def x(self):
         return self._x
+
     @x.setter
     def x(self, value):
         self._x = value
@@ -32,11 +32,11 @@ class Vec2:
         self._magnitude = math.sqrt(self.x**2+self.y**2)
         if self.magnitude != 0:
             self._norm[0] = self.x/self.magnitude
-        
 
     @property
     def y(self):
         return self._y
+
     @y.setter
     def y(self, value):
         self._y = value
@@ -49,11 +49,12 @@ class Vec2:
     @property
     def dict(self):
         return self._dict
+
     @dict.setter
     def dict(self, value):
         # self.y = value["x"]
         self.y = value["y"]
-    
+
     @property
     def list(self):
         return self._list
@@ -66,11 +67,16 @@ class Vec2:
     def normalized(self):
         return Vec2(*self._norm)
 
+    @property
+    def __neg__(self):
+        return self.__mul__(-1)
+
     def __add__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x+other.x, self.y+other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x+other, self.y+other)
+
     def rotate(self, angle):
         sin = math.sin(angle)
         cos = math.cos(angle)
@@ -81,35 +87,44 @@ class Vec2:
     def angle(self, other):
         if isinstance(other, Vec2):
             return math.acos(self.dot(other)/(self.magnitude*other.magnitude))
+
     def dot(self, other):
         if isinstance(other, Vec2):
             return self.x*other.x + self.y * other.y
+
     def __sub__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x-other.x, self.y-other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x-other, self.y-other)
+
     def __rdiv__(self, other):
         if type(other) in [int, float]:
             return Vec2(other/self.x, other/self.y)
+
     def __div__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x/other.x, self.y/other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x/other, self.y/other)
+
     def __truediv__(self, other):
         return self.__div__(other)
+
     def __mul__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x*other.x, self.y*other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x*other, self.y*other)
+
     def __repr__(self) -> str:
         return f"Vec2(x= {self.x}, y= {self.y})"
+
     def __list__(self):
         return [self.x, self.y]
     __rmul__ = __mul__
     __radd__ = __add__
+
 
 class Rect:
     def __init__(self, pos: Vec2, size: Vec2, ctx):
@@ -127,6 +142,7 @@ class Rect:
         self.quad = arcade.gl.geometry.quad_2d(
             size=(size.x, size.y), pos=(pos.x, pos.y))
         self.update_program()
+
     def __setitem__(self, key, val):
         self.prog[key] = val
 
@@ -152,14 +168,16 @@ class Rect:
     def draw(self):
         self.quad.render(self.prog)
 
+
 class Entity:
-    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float], 
+    def __init__(self, pos: Vec2, size: Vec2, color: tuple[float, float, float],
                  moment_of_inertia: float = PymunkPhysicsEngine.MOMENT_INF,
-                 collision_type: str = None, max_velocity: float = None, type_= PymunkPhysicsEngine.DYNAMIC, friction= 0.7):
+                 collision_type: str = None, max_velocity: float = None, type_=PymunkPhysicsEngine.DYNAMIC, friction=0.7):
         self.pos: Vec2 = pos
         self.size = size
         self.angle = 0
-        self.rect: arcade.Sprite = arcade.SpriteSolidColor(self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
+        self.rect: arcade.Sprite = arcade.SpriteSolidColor(
+            self.size.x, self.size.y, self.pos.x, self.pos.y, color, self.angle)
         sprite_all_draw.append(self.rect)
         self.velocity: Vec2 = Vec2(0.0, 0.0)
         self.color = color
@@ -172,15 +190,15 @@ class Entity:
                         damping=0.01,
                         collision_type=collision_type,
                         max_velocity=max_velocity,
-                        body_type= type_,
-                        elasticity= 0.05)
+                        body_type=type_,
+                        elasticity=0.05)
 
     def collide_line(self, a: Vec2, b: Vec2):
         c = self.pos
-        d = abs((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x))/ math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2)
+        d = abs((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x)) / \
+            math.sqrt((b.x-a.x)**2 + (b.y-a.y)**2)
         return d <= self.radius
 
-    
     def update(self, dt: float):
         self.rect.center_x += self.velocity.x*dt
         self.rect.center_y += self.velocity.y*dt
@@ -188,7 +206,7 @@ class Entity:
         # self.rect.center_y= self.pos.y
         self.pos = Vec2(self.rect.position[0], self.rect.position[1])
         self.rect.angle = self.angle
-    
+
     def die(self):
         for call in self.die_calls:
             call(self)
@@ -200,6 +218,7 @@ class Entity:
 
     def collide(self, other):
         return bool(self.rect.rect.intersection(other.rect.rect))
+
     def to_json(self):
         data = {
             "pos": self.pos.dict(),
@@ -209,6 +228,7 @@ class Entity:
             "angle": self.angle
         }
         return data
+
     def from_json(self, d):
         data = json.loads(d)
         self.angle = data['angle']
@@ -219,9 +239,10 @@ class Entity:
         self.size = Vec2(s['x'], s['y'])
         self.pos = Vec2(p['x'], p['y'])
         self.color = data['color']
-        self.rect.center_x= self.pos.x
-        self.rect.center_y= self.pos.y
+        self.rect.center_x = self.pos.x
+        self.rect.center_y = self.pos.y
         self.rect.angle = self.angle
+
 
 class Bar:
     def __init__(self, pos: Vec2, size: Vec2, color, bg_color, value, max_value):
@@ -243,14 +264,17 @@ class Bar:
             pos.y + self.size.y/2 - 5,
         )
 
-
     def draw(self):
-        arcade.draw_lbwh_rectangle_filled(self.pos.x, self.pos.y, self.size.x, self.size.y, self.bg_color)
-        arcade.draw_lbwh_rectangle_filled(self.pos.x, self.pos.y, self.size.x*self.value/self.max_value, self.size.y, self.color)
-        arcade.draw_text(f"{round(self.value, 2)}/{round(self.max_value, 2)}", self.text_pos.x, self.text_pos.y)
+        arcade.draw_lbwh_rectangle_filled(
+            self.pos.x, self.pos.y, self.size.x, self.size.y, self.bg_color)
+        arcade.draw_lbwh_rectangle_filled(
+            self.pos.x, self.pos.y, self.size.x*self.value/self.max_value, self.size.y, self.color)
+        arcade.draw_text(
+            f"{round(self.value, 2)}/{round(self.max_value, 2)}", self.text_pos.x, self.text_pos.y)
+
 
 class ItemBar:
-    def __init__(self, pos: Vec2, cell_size: int, color_active, color_bg, items: list[arcade.Sprite|None], spacing: int= 5):
+    def __init__(self, pos: Vec2, cell_size: int, color_active, color_bg, items: list[arcade.Sprite | None], spacing: int = 5):
         self.pso = pos
         self.cell_size = cell_size
         self.color_active = color_active
@@ -258,13 +282,12 @@ class ItemBar:
         self.items = items
         self.spacing = spacing
         self.left_down = pos - len(items)/2*(cell_size+spacing)
-    
 
-    
     def get_pos(self, item):
         pass
 
     pass
+
 
 if __name__ == "__main__":
     e = Entity(Vec2(0, 0), Vec2(1, 1), [0, 0, 0])
@@ -274,5 +297,5 @@ if __name__ == "__main__":
     e.size = Vec2(2, 3)
     e.color = [1, 2, 3]
     e.velocity = Vec2(2, 4)
-    e.from_json(js) 
+    e.from_json(js)
     print(e.to_json())

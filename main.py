@@ -12,6 +12,7 @@ from weapons import *
 enemies = []
 walls = arcade.SpriteList()
 
+
 @dataclass
 class WearponData:
     reload: float
@@ -23,12 +24,14 @@ class WearponData:
 
 class Wall(bc.Entity):
     def __init__(self, pos: Vec2, size: Vec2 = Vec2(50, 50)):
-        super().__init__(pos, size, (100, 100, 100), moment_of_inertia= bc.PymunkPhysicsEngine.MOMENT_INF, collision_type= "Wall", type_ = bc.PymunkPhysicsEngine.STATIC)
+        super().__init__(pos, size, (100, 100, 100), moment_of_inertia=bc.PymunkPhysicsEngine.MOMENT_INF,
+                         collision_type="Wall", type_=bc.PymunkPhysicsEngine.STATIC)
         a = size.__div__(2)
         b = size.__div__(-2)
         c = Vec2(size.x / 2, size.y / -2)
         d = Vec2(size.x / -2, size.y / 2)
-        p = self.pos 
+        p = self.pos
+
 
 class Trigger:
     def __init__(self, on_enter, on_exit, pos: Vec2, radius=50, sprite=None):
@@ -37,7 +40,7 @@ class Trigger:
         else:
             self.shape = sprite
         self.pos = pos
-        bc.phys.add_sprite(self.shape, collision_type= "Trigger")
+        bc.phys.add_sprite(self.shape, collision_type="Trigger")
         physics_object = bc.phys.get_physics_object(self.shape)
         physics_object.shape.sensor = True
         first_time = False
@@ -55,32 +58,33 @@ class Trigger:
                 return False
 
         bc.phys.add_collision_handler(
-                "Trigger",
-                "Player",
-                begin_handler= enter_handler,
-                separate_handler= exit_handler 
-                )
-        
-    
+            "Trigger",
+            "Player",
+            begin_handler=enter_handler,
+            separate_handler=exit_handler
+        )
+
     @property
     def pos(self):
         return self._pos
+
     @pos.setter
     def pos(self, value: Vec2):
-        self._pos = value    
+        self._pos = value
         self.shape.center_x, self.shape.center_y = value.list
 
     def die(self):
         self.shape.remove_from_sprite_lists()
 
+
 class InteractiveEntity(bc.Entity):
     def __init__(self, pos: Vec2):
         super().__init__(
-                pos,
-                Vec2(50, 50),
-                (203, 138, 39),
-                type_= bc.PymunkPhysicsEngine.STATIC
-                )
+            pos,
+            Vec2(50, 50),
+            (203, 138, 39),
+            type_=bc.PymunkPhysicsEngine.STATIC
+        )
         self.player_inside = False
 
         def on_player_exit(*_):
@@ -91,16 +95,17 @@ class InteractiveEntity(bc.Entity):
 
         self.trigger = Trigger(on_player_enter, on_player_exit, pos)
 
-
     def on_draw(self):
         if self.player_inside:
             arcade.draw_text(f"PRESS E TO USE, (WIP)", *self.pos.list)
+
 
 class Item:
     def __init__(self, pos: Vec, item_to_add):
 
         self.player_entered = False
-        self.item = item_to_add 
+        self.item = item_to_add
+
         def on_player_exit(*_):
             self.player_entered = False
 
@@ -112,12 +117,13 @@ class Item:
 
         self.trigger = Trigger(on_player_enter, on_player_exit, pos, 10)
 
+
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity):
         super().__init__(
             pos, Vec2(45, 45), (155, 0, 0),
             collision_type="Enemy",
-            friction= 0.05
+            friction=0.3
         )
         self.target = target
         self.health = 100
@@ -137,23 +143,26 @@ class Enemy(bc.Entity):
         # Direct chase toward player
         dp = self.target.pos - self.pos
         if dp.magnitude > 0.01:
-            self.angle = math.degrees(math.atan2(dp.x, dp.y))
+            at = math.atan2(dp.x, dp.y)
+            self.angle = math.degrees(at)
 
-            speed = 600
-            df = Vec2(0, 0)
-            
-            self.velocity = dp.normalized*speed
+            speed = 1000
+
+            self.velocity = 1*Vec2(math.sin(at), math.cos(at)) * speed
             bc.phys.apply_force(self.rect, self.velocity.list)
 
     def draw(self):
         pass
 
+
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
-        super().__init__(pos, Vec2(45, 45), (0, 255, 0), collision_type= "Player", friction= 0.0)
-        self.keys = set() 
+        super().__init__(pos, Vec2(45, 45), (0, 255, 0),
+                         collision_type="Player", friction=0.0)
+        self.keys = set()
         self.weapon_number = 0
-        self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(self), Shotgun(self), Crossbow(self), SniperRiffle(self)] 
+        self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
+            self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
         self.available_weapons = [Pistol(self)]
         # self.weapon_list = ['Pistol','riffle','machine_pistols','shotgun','crossbow','sniper_riffle']
         self.health = 50
@@ -170,7 +179,7 @@ class Player(bc.Entity):
                 self.items.remove(item)
 
     def set_angle(self, mouse_pos: Vec2):
-        dp = self.pos -mouse_pos
+        dp = self.pos - mouse_pos
         if dp.y:
             self.angle = math.degrees(math.atan2(dp.x, dp.y))
         else:
@@ -226,22 +235,26 @@ class Player(bc.Entity):
 
     def on_key_press(self, key):
         self.keys.add(key)
+
     def on_key_release(self, key):
         if key in self.keys:
             self.keys.remove(key)
 
+
 class Window(arcade.Window):
     def __init__(self):
-        super().__init__(1920, 1080, "game for game jam", fullscreen= True)
+        super().__init__(1920, 1080, "game for game jam", fullscreen=True)
         self.bloom = arcade.experimental.BloomFilter(
             self.width, self.height, 20)
         self.mouse_pos = Vec2(1, 1)
         # self.walls = [Wall(Vec2(i.x, i.y), Vec2(50, 500)) for i in l1]
 
-        self.vig = helpers.Shader("shaders/vignette.glsl", self.ctx, w= self.width, h= self.height)
-        self.pix = helpers.Shader("shaders/pixelation.glsl", self.ctx, w= self.width, h= self.height)
-        self.bg = helpers.Shader("shaders/bg.glsl", self.ctx, w= self.width, h= self.height)
-
+        self.vig = helpers.Shader(
+            "shaders/vignette.glsl", self.ctx, w=self.width, h=self.height)
+        self.pix = helpers.Shader(
+            "shaders/pixelation.glsl", self.ctx, w=self.width, h=self.height)
+        self.bg = helpers.Shader(
+            "shaders/bg.glsl", self.ctx, w=self.width, h=self.height)
 
         self.setup_collision_handlers()
 
@@ -251,24 +264,25 @@ class Window(arcade.Window):
         self.vig["inner_radius"] = 0.0
         self.vig["outer_radius"] = 1.0
         # self.bg["screen_size"] = (1920, 1080)
-        
+
         self.screen_size = Vec2(self.width, self.height)
 
         aspect_ratio = self.width/self.height
         deadzone_size = 00
-        self.camera_deadzone = Vec2(deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
+        self.camera_deadzone = Vec2(
+            deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
         self.setup()
 
     def setup(self):
         global enemies, barriers
         enemies.clear()
-        walls.clear() 
+        walls.clear()
         for sprite in list(bc.sprite_all_draw):
             if hasattr(sprite, "parent") and hasattr(sprite.parent, "die"):
                 sprite.parent.die()
             else:
                 sprite.remove_from_sprite_lists()
-        
+
         self.test_int = InteractiveEntity(Vec2(180, 0))
         self.level = helpers.LevelLoader.load_level("level.lvl")
         self.player = Player(self.level.spawn.pos)
@@ -279,17 +293,18 @@ class Window(arcade.Window):
             e = Enemy(enemy.pos, self.player)
             enemies.append(e)
 
-        self.camera = arcade.Camera2D(position= self.player.pos.list)
+        self.camera = arcade.Camera2D(position=self.player.pos.list)
         self.camera_pos = self.player.pos
 
         self.health_bar = bc.Bar(
-                                self.get_world_from_screen(Vec2(10, 10)),
-                                Vec2(300, 20),
-                                (255, 10, 10),
-                                (100, 100, 100),
-                                50,
-                                50
-                                )
+            self.get_world_from_screen(Vec2(10, 10)),
+            Vec2(300, 20),
+            (255, 10, 10),
+            (100, 100, 100),
+            50,
+            50
+        )
+
     def get_world_from_screen(self, pos):
         return pos + (self.camera_pos - Vec2(self.width/2, self.height/2))
 
@@ -303,20 +318,17 @@ class Window(arcade.Window):
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
-            bullet_sprite =sprite_from_arbiter(arbiter, 0)
+            bullet_sprite = sprite_from_arbiter(arbiter, 0)
             bullet_sprite.parent.die()
             enemy_sprite = sprite_from_arbiter(arbiter, 1)
             enemy_sprite.parent.health -= bullet_sprite.parent.damage
-            
+
         def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             player_sprite = sprite_from_arbiter(arbiter, 0)
             player = player_sprite.parent
             enemy = sprite_from_arbiter(arbiter, 1)
             player.take_damage(enemy.parent.damage, enemy.parent)
             self.health_bar.value = player.health
-            
-
-
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/wall collision """
@@ -324,24 +336,22 @@ class Window(arcade.Window):
             bullet_sprite = sprite_from_arbiter(arbiter, 0)
             # bullet_sprite.remove_from_sprite_lists()
             # bullet_sprite.parent.die()
-        
-        bc.phys.add_collision_handler(
-                "Player",
-                "Enemy",
-                post_handler= en_player_hit_handler
-                )
-        bc.phys.add_collision_handler(
-                "Bullet",
-                "Enemy",
-                post_handler= enemy_hit_handler
-                )
-        bc.phys.add_collision_handler(
-                "Bullet",
-                "Wall",
-                post_handler= wall_hit_handler
-                )
 
-
+        bc.phys.add_collision_handler(
+            "Player",
+            "Enemy",
+            post_handler=en_player_hit_handler
+        )
+        bc.phys.add_collision_handler(
+            "Bullet",
+            "Enemy",
+            post_handler=enemy_hit_handler
+        )
+        bc.phys.add_collision_handler(
+            "Bullet",
+            "Wall",
+            post_handler=wall_hit_handler
+        )
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
@@ -368,12 +378,13 @@ class Window(arcade.Window):
         name = weapon.__repr__()
         arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
         bullets = weapon.bul_count_now
-        arcade.draw_text(f"bullets left: {bullets}", name_pos.x, name_pos.y - 15)
+        arcade.draw_text(
+            f"bullets left: {bullets}", name_pos.x, name_pos.y - 15)
         if bullets == 0:
-            arcade.draw_text(f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
+            arcade.draw_text(
+                f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 30)
 
         self.test_int.on_draw()
-
 
     # def get_world_from
 
@@ -385,7 +396,7 @@ class Window(arcade.Window):
         # self.fbo.clear(color = (255, 255, 255))
         self.vig.clear()
         self.pix.clear()
-        self.bg.clear() 
+        self.bg.clear()
         with self.vig:
             with self.pix:
                 self.bg.draw()
@@ -422,9 +433,8 @@ class Window(arcade.Window):
         self.camera.position = new_camera_pos.list
         self.camera_pos = new_camera_pos
         self.vig["alpha"] = self.vig_alp
-        
-        self.health_bar.value = self.player.health
 
+        self.health_bar.value = self.player.health
 
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
@@ -439,8 +449,9 @@ class Window(arcade.Window):
     def on_mouse_press(self, x, y, button, *_):
         if button == 1:
             self.player.shoot = True
-    def on_mouse_release(self,x, y, button, *_):
-        if button == 1: 
+
+    def on_mouse_release(self, x, y, button, *_):
+        if button == 1:
             self.player.shoot = False
         # enemy = Enemy(pos, self.player)
         # enemies.append(enemy)

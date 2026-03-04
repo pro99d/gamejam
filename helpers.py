@@ -3,8 +3,9 @@ from dataclasses import dataclass
 import base64
 import arcade
 
+
 class Shader:
-    def __init__(self, frag: str, ctx, vert: str | None= None, w: int= 1920, h: int= 1080):
+    def __init__(self, frag: str, ctx, vert: str | None = None, w: int = 1920, h: int = 1080):
         self.ctx = ctx
         self.quad_fs = arcade.gl.geometry.quad_2d_fs()
         self.w = w
@@ -28,12 +29,14 @@ class Shader:
         with open(frag) as f:
             frag_sh = f.read()
         self.prog = self.ctx.program(
-                vertex_shader= vert_sh,
-                fragment_shader= frag_sh,
-                )
+            vertex_shader=vert_sh,
+            fragment_shader=frag_sh,
+        )
+
     def resize(self, w, h):
         self.tex = self.ctx.texture((w, h))
         self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])
+
     def __enter__(self):
         self.fbo.__enter__()
 
@@ -44,31 +47,43 @@ class Shader:
         self.tex.use(0)
         self.quad_fs.render(self.prog)
 
-    def clear(self, color= (0, 0, 0)):
-        self.fbo.clear(color= color)
+    def clear(self, color=(0, 0, 0)):
+        self.fbo.clear(color=color)
 
-    
     def __setitem__(self, key, value):
         self.prog[key] = value
+
 
 @dataclass
 class EnemyData:
     pos: Vec2
     type_: int
 
+
 @dataclass
 class WallData:
     pos: Vec2
     size: Vec2
+
+
 @dataclass
 class Spawn:
     pos: Vec2
+
+
+@dataclass
+class Itemdata:
+    pos: Vec2
+    type: int
+
 
 class Level:
     def __init__(self):
         self.walls: list[WallData] = []
         self.enemies: list[EnemyData] = []
-        self.spawn: Spawn= Spawn(Vec2(0, 0))
+        self.spawn: Spawn = Spawn(Vec2(0, 0))
+        self.items: list
+
 
 class LevelLoader:
     @staticmethod
@@ -98,8 +113,8 @@ class LevelLoader:
                 break
             dtype = int(dtype)
             match dtype:
-                case 0: # spawn point
-                    if pointer +1 >= len(level):
+                case 0:  # spawn point
+                    if pointer + 1 >= len(level):
                         raise ValueError("Wrong level format!")
                     x = float(level[pointer])
                     pointer += 1
@@ -107,7 +122,7 @@ class LevelLoader:
                     pointer += 1
                     content.spawn = Spawn(Vec2(x, y))
 
-                case 1: # wall
+                case 1:  # wall
                     if pointer+3 >= len(level):
                         raise ValueError("Wrong level format!")
                     x = float(level[pointer])
@@ -120,7 +135,7 @@ class LevelLoader:
                     pointer += 1
                     wd = WallData(Vec2(x, y), Vec2(size_x, size_y))
                     content.walls.append(wd)
-                case 2: # enemy
+                case 2:  # enemy
                     if pointer+2 >= len(level):
                         raise ValueError("Wrong level format!")
                     x = float(level[pointer])
@@ -134,6 +149,7 @@ class LevelLoader:
                 case _:
                     raise ValueError("Wrong level format!")
         return content
+
     @staticmethod
     def remove_dublicates(level: Level):
         positions = []
@@ -177,12 +193,14 @@ class LevelLoader:
         with open(path, 'rb') as file:
             content = file.read()
         return LevelLoader.from_str(content)
+
     @staticmethod
     def save_level(path: str, level: Level):
         level = LevelLoader.remove_dublicates(level)
         lvl_string = LevelLoader.to_str(level)
         with open(path, 'wb') as file:
             file.write(lvl_string)
+
 
 if __name__ == "__main__":
     # level.spawn = Spawn(Vec2(100, 100))

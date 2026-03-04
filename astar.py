@@ -2,11 +2,12 @@
 class BFS:
     def __init__(self, init_state, target, actions, goal_test) -> None:
         self.frontier = [Node(init_state, None, 0, 0)]
-        self.actions = actions 
+        self.actions = actions
         self.target = target
         self.visited = set()
         if goal_test:
             self.is_goal = goal_test
+
     def is_goal(self, node: Node):
         return node.state == self.target
 
@@ -22,10 +23,13 @@ class BFS:
                 self.frontier.append(
                     Node(action, node, action, node.path_cost+1)
                 )
+
+
 class Astar(BFS):
     def __init__(self, init_state, target, actions, goal_test, finish) -> None:
         self.finish = finish
         super().__init__(init_state, target, actions, goal_test)
+
     def h(self, state):
         x, y = map(int, state.split("x"))
         return abs(self.finish[0]-x)+abs(self.finish[1]-y)
@@ -36,7 +40,7 @@ class Astar(BFS):
     def repeat(self):
         if not self.frontier:
             raise ValueError("No solution found!")
-        
+
         node = self.get_node()
         if self.is_goal(node):
             return node
@@ -46,4 +50,3 @@ class Astar(BFS):
                 self.frontier.append(
                     Node(action, node, action, node.path_cost+1)
                 )
-

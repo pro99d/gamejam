@@ -133,14 +133,16 @@ class GameView(arcade.View):
         def rock_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/rock collision """
             bullet_shape = arbiter.shapes[0]
-            bullet_sprite = self.physics_engine.get_sprite_for_shape(bullet_shape)
+            bullet_sprite = self.physics_engine.get_sprite_for_shape(
+                bullet_shape)
             bullet_sprite.remove_from_sprite_lists()
             print("Rock")
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/rock collision """
             bullet_shape = arbiter.shapes[0]
-            bullet_sprite = self.physics_engine.get_sprite_for_shape(bullet_shape)
+            bullet_sprite = self.physics_engine.get_sprite_for_shape(
+                bullet_shape)
             bullet_sprite.remove_from_sprite_lists()
             print("Wall")
 
@@ -202,7 +204,8 @@ class GameView(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers):
         """ Called whenever the mouse button is clicked. """
 
-        bullet = arcade.SpriteSolidColor(width=5, height=5, color=arcade.color.RED)
+        bullet = arcade.SpriteSolidColor(
+            width=5, height=5, color=arcade.color.RED)
         self.bullet_list.append(bullet)
 
         # Position the bullet at the player's current location
@@ -310,6 +313,7 @@ class GameView(arcade.View):
         self.rock_list.draw()
         self.gem_list.draw()
         self.player_list.draw()
+
 
 def main():
     """ Main function """

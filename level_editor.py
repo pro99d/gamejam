@@ -12,7 +12,7 @@ SCREEN_TITLE = "Level Editor"
 
 class Window(arcade.Window):
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, fullscreen= True)
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, fullscreen=True)
         arcade.set_background_color(arcade.color.DARK_GREEN)
         self.camera = arcade.Camera2D()
         self.grid_shader = helpers.Shader("shaders/bg.glsl", self.ctx)
@@ -31,7 +31,7 @@ class Window(arcade.Window):
             enemies = []
             for enemy in self.level.enemies:
                 enemies.append(Enemy(enemy.pos, 1))
-            self.level.enemies = enemies 
+            self.level.enemies = enemies
             for wall in self.level.walls:
                 walls.append(Wall(wall.pos, wall.size))
             self.level.walls = walls
@@ -43,7 +43,7 @@ class Window(arcade.Window):
         self.grid_shader["screen_size"] = (w, h)
 
     def get_world_from_screen(self, pos):
-        centered = pos- Vec2(self.width/2, self.height/2)
+        centered = pos - Vec2(self.width/2, self.height/2)
         return Vec2(*self.camera.position) + centered / self.camera.zoom
 
     def on_draw(self):
@@ -54,15 +54,21 @@ class Window(arcade.Window):
         sprite_all_draw.draw()
         pos = self.get_world_from_screen(Vec2(10, 15))
         font_size = int(16 / self.camera.zoom)
-        arcade.draw_text("SPACE to save to «level.lvl»", pos.x, pos.y + 75, font_size=font_size)
-        arcade.draw_text(f"mode: {self.mode}", pos.x, pos.y+60, font_size=font_size)
+        arcade.draw_text("SPACE to save to «level.lvl»",
+                         pos.x, pos.y + 75, font_size=font_size)
+        arcade.draw_text(f"mode: {self.mode}", pos.x,
+                         pos.y+60, font_size=font_size)
         arcade.draw_text("Q to exit", pos.x, pos.y+45, font_size=font_size)
-        arcade.draw_text("1 for enter wall mode.", pos.x, pos.y + 30, font_size=font_size)
-        arcade.draw_text("2 for enter enemy mode.", pos.x, pos.y + 15, font_size=font_size)
-        arcade.draw_text("3 for enter spawn point mode.", pos.x, pos.y, font_size=font_size)
-        arcade.draw_text("LMB for place, RMB for delete", pos.x, pos.y + self.height - 30, font_size=font_size)
+        arcade.draw_text("1 for enter wall mode.", pos.x,
+                         pos.y + 30, font_size=font_size)
+        arcade.draw_text("2 for enter enemy mode.", pos.x,
+                         pos.y + 15, font_size=font_size)
+        arcade.draw_text("3 for enter spawn point mode.",
+                         pos.x, pos.y, font_size=font_size)
+        arcade.draw_text("LMB for place, RMB for delete", pos.x,
+                         pos.y + self.height - 30, font_size=font_size)
         arcade.draw_text("spawn", *self.level.spawn.pos.list)
-        
+
     def on_update(self, dt):
         self.camera_pos = Vec2(*self.camera.position)
         self.grid_shader["pos"] = self.camera_pos.list
@@ -91,9 +97,10 @@ class Window(arcade.Window):
             helpers.LevelLoader.save_level("level.lvl", self.level)
 
         self.keys.add(symbol)
-    
+
     def on_key_release(self, symbol, modifiers):
         self.keys.remove(symbol)
+
     def on_mouse_press(self, x, y, button, *_):
         pos = self.get_world_from_screen(Vec2(x, y))
         pos.x //= self.gr_size
@@ -127,7 +134,7 @@ class Window(arcade.Window):
         # self.camera.zoom += scy * 0.1
         # self.grid_shader['zoom'] = self.camera.zoom
 
+
 if __name__ == "__main__":
     window = Window()
     window.run()
-
