@@ -1,3 +1,4 @@
+from locale import str
 import math
 import json
 import arcade
@@ -274,19 +275,51 @@ class Bar:
 
 
 class ItemBar:
-    def __init__(self, pos: Vec2, cell_size: int, color_active, color_bg, items: list[arcade.Sprite | None], spacing: int = 5):
-        self.pso = pos
+    def __init__(
+        self,
+        pos: Vec2,
+        items: list,
+        cell_size: int,
+        spacing: int = 5,
+        color_active: tuple = (255, 255, 255),
+        color_bg: tuple = (50, 50, 50),
+    ):
+        # self._pos = pos
+        self.items = items
         self.cell_size = cell_size
+        self.spacing = spacing
         self.color_active = color_active
         self.color_bg = color_bg
-        self.items = items
-        self.spacing = spacing
-        self.left_down = pos - len(items)/2*(cell_size+spacing)
+        self.active = 0
+        self.item_count = len(items)
+        self.total_width = self.item_count * cell_size + (self.item_count - 1) * spacing
+        self.pos = pos
+        
+    @property
+    def pos(self):
+        return self.bottom_left_pos + Vec2(self.total_width/2, self.cell_size/2)
+    @pos.setter
+    def pos(self, pos):
+        self.bottom_left_pos = Vec2(pos.x - self.total_width / 2, pos.y - self.cell_size/2)
 
-    def get_pos(self, item):
-        pass
+    def draw(self) -> None:
+        for i in range(self.item_count):
+            x = self.bottom_left_pos.x + i * (self.cell_size + self.spacing)
+            y = self.pos.y
 
-    pass
+            arcade.draw_lbwh_rectangle_filled(
+                x, y, self.cell_size, self.cell_size, self.color_bg
+            )
+            if hasattr(self.items[i], "draw"):
+                self.items[i].draw(x, y)
+            if i == self.active:
+                border_size = self.cell_size
+                border_x = x
+                border_y = y
+
+                arcade.draw_lbwh_rectangle_outline(
+                    border_x, border_y, border_size, border_size, self.color_active, 3
+                )
 
 
 if __name__ == "__main__":
