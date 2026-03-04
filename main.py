@@ -33,7 +33,7 @@ class Wall(bc.Entity):
 class Trigger:
     def __init__(self, on_enter, on_exit, pos: Vec2, radius=50, sprite=None):
         if sprite == None:
-            self.shape = arcade.SpriteCircle(50, (0, 0, 0), False, *pos.__list__())
+            self.shape = arcade.SpriteCircle(50, (0, 0, 0), False, *pos.list)
         else:
             self.shape = sprite
         self.pos = pos
@@ -68,7 +68,7 @@ class Trigger:
     @pos.setter
     def pos(self, value: Vec2):
         self._pos = value    
-        self.shape.center_x, self.shape.center_y = value.__list__()
+        self.shape.center_x, self.shape.center_y = value.list
 
     def die(self):
         self.shape.remove_from_sprite_lists()
@@ -94,7 +94,7 @@ class InteractiveEntity(bc.Entity):
 
     def on_draw(self):
         if self.player_inside:
-            arcade.draw_text(f"PRESS E TO USE, (WIP)", *self.pos.__list__())
+            arcade.draw_text(f"PRESS E TO USE, (WIP)", *self.pos.list)
 
 class Item:
     def __init__(self, pos: Vec, item_to_add):
@@ -136,14 +136,14 @@ class Enemy(bc.Entity):
 
         # Direct chase toward player
         dp = self.target.pos - self.pos
-        if dp.magnitude() > 0.01:
+        if dp.magnitude > 0.01:
             self.angle = math.degrees(math.atan2(dp.x, dp.y))
 
             speed = 600
             df = Vec2(0, 0)
             
-            self.velocity = dp.normalize()*speed
-            bc.phys.apply_force(self.rect, self.velocity.__list__())
+            self.velocity = dp.normalized*speed
+            bc.phys.apply_force(self.rect, self.velocity.list)
 
     def draw(self):
         pass
@@ -188,7 +188,7 @@ class Player(bc.Entity):
             dv += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dv += Vec2(-acc, 0)
-        bc.phys.apply_force(self.rect, dv.__list__())
+        bc.phys.apply_force(self.rect, dv.list)
 
         weapon_number = self.weapon_number
         if arcade.key.KEY_1 in self.keys:
@@ -279,7 +279,7 @@ class Window(arcade.Window):
             e = Enemy(enemy.pos, self.player)
             enemies.append(e)
 
-        self.camera = arcade.Camera2D(position= self.player.pos.__list__())
+        self.camera = arcade.Camera2D(position= self.player.pos.list)
         self.camera_pos = self.player.pos
 
         self.health_bar = bc.Bar(
@@ -379,9 +379,9 @@ class Window(arcade.Window):
 
     def on_draw(self):
         self.camera.use()
-        self.bg["pos"] = self.camera_pos.__list__()
-        self.pix["screen_size"] = (self.screen_size * self.camera.zoom).__list__()
-        self.vig["screen_size"] = (self.screen_size * self.camera.zoom).__list__()
+        self.bg["pos"] = self.camera_pos.list
+        self.pix["screen_size"] = (self.screen_size * self.camera.zoom).list
+        self.vig["screen_size"] = (self.screen_size * self.camera.zoom).list
         # self.fbo.clear(color = (255, 255, 255))
         self.vig.clear()
         self.pix.clear()
@@ -419,7 +419,7 @@ class Window(arcade.Window):
             dp.y = 0
 
         new_camera_pos = self.camera_pos + dp
-        self.camera.position = new_camera_pos.__list__()
+        self.camera.position = new_camera_pos.list
         self.camera_pos = new_camera_pos
         self.vig["alpha"] = self.vig_alp
         

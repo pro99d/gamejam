@@ -12,18 +12,65 @@ phys = PymunkPhysicsEngine((0, 0), 0.7)
 
 class Vec2:
     def __init__(self, x: float, y: float) -> None:
+        self._dict = {}
+        self._list = [0, 0]
+        self._norm = [0, 0]
+        self._x = 0
+        self._y = 0
         self.x = x
         self.y = y
+        
+
+    @property
+    def x(self):
+        return self._x
+    @x.setter
+    def x(self, value):
+        self._x = value
+        self._dict["x"] = value
+        self._list[0] = value
+        self._magnitude = math.sqrt(self.x**2+self.y**2)
+        if self.magnitude != 0:
+            self._norm[0] = self.x/self.magnitude
+        
+
+    @property
+    def y(self):
+        return self._y
+    @y.setter
+    def y(self, value):
+        self._y = value
+        self._list[1] = value
+        self._dict["y"] = value
+        self._magnitude = math.sqrt(self.x**2+self.y**2)
+        if self.magnitude != 0:
+            self._norm[1] = self.y/self.magnitude
+
+    @property
     def dict(self):
-        return {"x":self.x, "y":self.y}
+        return self._dict
+    @dict.setter
+    def dict(self, value):
+        # self.y = value["x"]
+        self.y = value["y"]
+    
+    @property
+    def list(self):
+        return self._list
+
+    @property
+    def magnitude(self):
+        return self._magnitude
+
+    @property
+    def normalized(self):
+        return Vec2(*self._norm)
 
     def __add__(self, other):
         if isinstance(other, Vec2):
             return Vec2(self.x+other.x, self.y+other.y)
         elif type(other) in [int, float]:
             return Vec2(self.x+other, self.y+other)
-    def magnitude(self):
-        return math.sqrt(self.x**2+self.y**2)
     def rotate(self, angle):
         sin = math.sin(angle)
         cos = math.cos(angle)
@@ -31,15 +78,9 @@ class Vec2:
         y = round(self.x*sin + self.y * cos, 15)
         return Vec2(x, y)
 
-    def normalize(self):
-        mag = self.magnitude()
-        x = self.x / mag
-        y = self.y / mag
-        return Vec2(x, y)
-
     def angle(self, other):
         if isinstance(other, Vec2):
-            return math.acos(self.dot(other)/(self.magnitude()*other.magnitude()))
+            return math.acos(self.dot(other)/(self.magnitude*other.magnitude))
     def dot(self, other):
         if isinstance(other, Vec2):
             return self.x*other.x + self.y * other.y
@@ -207,6 +248,23 @@ class Bar:
         arcade.draw_lbwh_rectangle_filled(self.pos.x, self.pos.y, self.size.x, self.size.y, self.bg_color)
         arcade.draw_lbwh_rectangle_filled(self.pos.x, self.pos.y, self.size.x*self.value/self.max_value, self.size.y, self.color)
         arcade.draw_text(f"{round(self.value, 2)}/{round(self.max_value, 2)}", self.text_pos.x, self.text_pos.y)
+
+class ItemBar:
+    def __init__(self, pos: Vec2, cell_size: int, color_active, color_bg, items: list[arcade.Sprite|None], spacing: int= 5):
+        self.pso = pos
+        self.cell_size = cell_size
+        self.color_active = color_active
+        self.color_bg = color_bg
+        self.items = items
+        self.spacing = spacing
+        self.left_down = pos - len(items)/2*(cell_size+spacing)
+    
+
+    
+    def get_pos(self, item):
+        pass
+
+    pass
 
 if __name__ == "__main__":
     e = Entity(Vec2(0, 0), Vec2(1, 1), [0, 0, 0])

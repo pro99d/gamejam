@@ -61,11 +61,11 @@ class Window(arcade.Window):
         arcade.draw_text("2 for enter enemy mode.", pos.x, pos.y + 15, font_size=font_size)
         arcade.draw_text("3 for enter spawn point mode.", pos.x, pos.y, font_size=font_size)
         arcade.draw_text("LMB for place, RMB for delete", pos.x, pos.y + self.height - 30, font_size=font_size)
-        arcade.draw_text("spawn", *self.level.spawn.pos.__list__())
+        arcade.draw_text("spawn", *self.level.spawn.pos.list)
         
     def on_update(self, dt):
         self.camera_pos = Vec2(*self.camera.position)
-        self.grid_shader["pos"] = self.camera_pos.__list__()
+        self.grid_shader["pos"] = self.camera_pos.list
         dp = Vec2(0, 0)
         acc = 10
         if arcade.key.W in self.keys:
@@ -76,7 +76,7 @@ class Window(arcade.Window):
             dp += Vec2(acc, 0)
         if arcade.key.A in self.keys:
             dp += Vec2(-acc, 0)
-        self.camera.position = (self.camera_pos + dp).__list__()
+        self.camera.position = (self.camera_pos + dp).list
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.Q:
@@ -111,21 +111,21 @@ class Window(arcade.Window):
                 self.level.spawn.pos = pos
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             for enemy in self.level.enemies:
-                if enemy.rect.collides_with_point(pos.__list__()):
+                if enemy.rect.collides_with_point(pos.list):
                     enemy.die()
                     enemy.rect.kill()
                     self.level.enemies.remove(enemy)
             for wall in self.level.walls:
-                if wall.rect.collides_with_point(pos.__list__()):
+                if wall.rect.collides_with_point(pos.list):
                     wall.die()
                     wall.rect.kill()
                     self.level.walls.remove(wall)
         else:
             print(button)
         # print(walls)
-    def on_mouse_scroll(self, x, y, scx, scy):
-        self.camera.zoom += scy * 0.1
-        self.grid_shader['zoom'] = self.camera.zoom
+    # def on_mouse_scroll(self, x, y, scx, scy):
+        # self.camera.zoom += scy * 0.1
+        # self.grid_shader['zoom'] = self.camera.zoom
 
 if __name__ == "__main__":
     window = Window()
