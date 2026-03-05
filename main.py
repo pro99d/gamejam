@@ -8,10 +8,9 @@ import random
 import helpers
 from weapons import *
 import particles
-
-
-enemies = []
-walls = arcade.SpriteList()
+from enemy_types import *
+from base_classes import walls
+from base_classes import Trigger
 
 
 @dataclass
@@ -34,48 +33,6 @@ class Wall(bc.Entity):
         p = self.pos
 
 
-class Trigger:
-    def __init__(self, on_enter, on_exit, pos: Vec2, radius=50, sprite=None):
-        if sprite == None:
-            self.shape = arcade.SpriteCircle(50, (0, 0, 0), False, *pos.list)
-        else:
-            self.shape = sprite
-        self.pos = pos
-        bc.phys.add_sprite(self.shape, collision_type="Trigger")
-        physics_object = bc.phys.get_physics_object(self.shape)
-        physics_object.shape.sensor = True
-        first_time = False
-
-        def exit_handler(*_):
-            on_exit(*_)
-
-        def enter_handler(*_):
-            nonlocal first_time
-            if first_time:
-                on_enter(*_)
-                return True
-            else:
-                first_time = True
-                return False
-
-        bc.phys.add_collision_handler(
-            "Trigger",
-            "Player",
-            begin_handler=enter_handler,
-            separate_handler=exit_handler
-        )
-
-    @property
-    def pos(self):
-        return self._pos
-
-    @pos.setter
-    def pos(self, value: Vec2):
-        self._pos = value
-        self.shape.center_x, self.shape.center_y = value.list
-
-    def die(self):
-        self.shape.remove_from_sprite_lists()
 
 
 class InteractiveEntity(bc.Entity):
@@ -129,43 +86,6 @@ class WeapDrawItem:
     name: str
     def draw(self, x, y):
         arcade.draw_text(self.name, x, y)
-
-class Enemy(bc.Entity):
-    def __init__(self, pos: Vec2, target: bc.Entity):
-        super().__init__(
-            pos, Vec2(45, 45), (155, 0, 0),
-            collision_type="Enemy",
-            friction=0.3
-        )
-        self.target = target
-        self.health = 100
-        self.inv = False
-        self.damage = 25
-        self.type_ = 1
-        self.rect.parent = self
-
-    def update(self, dt):
-        super().update(dt)
-
-        if self.health <= 0:
-            self.die()
-            enemies.remove(self)
-            return
-
-        # Direct chase toward player
-        dp = self.target.pos - self.pos
-        if dp.magnitude > 0.01:
-            at = math.atan2(dp.x, dp.y)
-            self.angle = math.degrees(at)
-
-            speed = 1300
-
-            self.velocity = 1*Vec2(math.sin(at), math.cos(at)) * speed
-            bc.phys.apply_force(self.rect, self.velocity.list)
-
-    def draw(self):
-        pass
-
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
@@ -294,14 +214,11 @@ class Window(arcade.Window):
             deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
         self.setup()
 
-        # PARTIVCLES
-        self.particle_system = particles.ParticleSystem()
-
-
     def setup(self):
         global enemies, barriers
         enemies.clear()
         walls.clear()
+        particles.system.explosions_list.clear()
         for sprite in list(bc.sprite_all_draw):
             if hasattr(sprite, "parent") and hasattr(sprite.parent, "die"):
                 sprite.parent.die()
@@ -335,6 +252,7 @@ class Window(arcade.Window):
         items = self.player.available_weapons
         self.item_bar = bc.ItemBar(pos, items, 50, 10)
 
+
     def get_world_from_screen(self, pos):
         return pos + (self.camera_pos - Vec2(self.width/2, self.height/2))
 
@@ -345,6 +263,15 @@ class Window(arcade.Window):
             sprite = bc.phys.get_sprite_for_shape(shape)
             return sprite
 
+        def damage_zone_handler(sprite_a, sprite_b, arbiter, space, data):
+            """called for player/enemy collision with damage zone"""
+            # print("A")
+            zone = sprite_a
+            object = sprite_b.parent
+            if hasattr(zone, "zone_damage") and hasattr(object, "health"):
+                object.health -= zone.zone_damage * self.delta_time
+                
+
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/enemy collision """
             # TODO add checks for types
@@ -352,7 +279,7 @@ class Window(arcade.Window):
             bullet_sprite.parent.die()
             enemy_sprite = sprite_from_arbiter(arbiter, 1)
             enemy_sprite.parent.health -= bullet_sprite.parent.damage
-            self.particle_system.create_explosion(Vec2(*bullet_sprite.position), 50)
+            particles.system.create_explosion(Vec2(*bullet_sprite.position), 50)
 
         def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             player_sprite = sprite_from_arbiter(arbiter, 0)
@@ -385,6 +312,17 @@ class Window(arcade.Window):
             post_handler=wall_hit_handler
         )
 
+        bc.phys.add_collision_handler(
+                "damage_zone",
+                "Enemy",
+                post_handler= damage_zone_handler
+                )
+        bc.phys.add_collision_handler(
+                "damage_zone",
+                "Player",
+                post_handler= damage_zone_handler
+                )
+
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
         self.pix.resize(width, height)
@@ -400,7 +338,7 @@ class Window(arcade.Window):
 
     def all_draw(self):
         bc.sprite_all_draw.draw()
-        self.particle_system.draw()
+        particles.system.draw()
 
     def draw_ui(self):
         self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
@@ -466,7 +404,7 @@ class Window(arcade.Window):
     def on_update(self, dt: float):
         bc.phys.step(1/60)
         
-        self.particle_system.update(dt)
+        particles.system.update(dt)
 
         self.player.update(dt)
         if self.player.health <= 0:

@@ -8,6 +8,7 @@ from arcade.pymunk_physics_engine import PymunkPhysicsEngine
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
 types_draw_list = []
+walls = arcade.SpriteList()
 
 phys = PymunkPhysicsEngine((0, 0), 0.7)
 
@@ -321,6 +322,49 @@ class ItemBar:
                     border_x, border_y, border_size, border_size, self.color_active, 3
                 )
 
+
+class Trigger:
+    def __init__(self, on_enter, on_exit, pos: Vec2, radius=50, sprite=None):
+        if sprite == None:
+            self.shape = arcade.SpriteCircle(50, (0, 0, 0), False, *pos.list)
+        else:
+            self.shape = sprite
+        self.pos = pos
+        phys.add_sprite(self.shape, collision_type="Trigger")
+        physics_object = phys.get_physics_object(self.shape)
+        physics_object.shape.sensor = True
+        first_time = False
+
+        def exit_handler(*_):
+            on_exit(*_)
+
+        def enter_handler(*_):
+            nonlocal first_time
+            if first_time:
+                on_enter(*_)
+                return True
+            else:
+                first_time = True
+                return False
+
+        phys.add_collision_handler(
+            "Trigger",
+            "Player",
+            begin_handler=enter_handler,
+            separate_handler=exit_handler
+        )
+
+    @property
+    def pos(self):
+        return self._pos
+
+    @pos.setter
+    def pos(self, value: Vec2):
+        self._pos = value
+        self.shape.center_x, self.shape.center_y = value.list
+
+    def die(self):
+        self.shape.remove_from_sprite_lists()
 
 if __name__ == "__main__":
     e = Entity(Vec2(0, 0), Vec2(1, 1), [0, 0, 0])

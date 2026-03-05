@@ -4,12 +4,11 @@ import arcade
 from base_classes import Vec2
 
 # --- Explosion Particles Related
-# How fast the particle will accelerate down. Make 0 if not desired
 PARTICLE_GRAVITY = 0.00
-PARTICLE_FADE_RATE = 8
+PARTICLE_FADE_RATE = 20
 PARTICLE_MIN_SPEED = 2.5
 PARTICLE_SPEED_RANGE = 2.5
-PARTICLE_COUNT = 100
+PARTICLE_COUNT = 50
 PARTICLE_RADIUS = 3
 # Possible particle colors
 PARTICLE_COLORS = [arcade.color.ALIZARIN_CRIMSON,
@@ -57,13 +56,13 @@ class Smoke(arcade.SpriteCircle):
 
 class Particle(arcade.SpriteCircle):
     """ Explosion particle"""
-    def __init__(self):
+    def __init__(self, fade):
         """
         Simple particle sprite based on circle sprite.
         """
         # Make the particle
         super().__init__(PARTICLE_RADIUS, random.choice(PARTICLE_COLORS))
-
+        self.fade = fade
         # Set direction/speed
         speed = random.random() * PARTICLE_SPEED_RANGE + PARTICLE_MIN_SPEED
         direction = random.randrange(360)
@@ -80,7 +79,7 @@ class Particle(arcade.SpriteCircle):
             self.remove_from_sprite_lists()
         else:
             # Gradually fade out the particle. Don't go below 0
-            self.alpha = max(0, self.alpha - PARTICLE_FADE_RATE)
+            self.alpha = max(0, self.alpha - self.fade)
             # Move the particle
             self.center_x += self.change_x * time_step
             self.center_y += self.change_y * time_step
@@ -108,12 +107,14 @@ class ParticleSystem:
     def update(self, dt: float):
         self.explosions_list.update(dt)
 
-    def create_explosion(self, pos: Vec2, particle_count= PARTICLE_COUNT):
+    def create_explosion(self, pos: Vec2, particle_count= PARTICLE_COUNT, fade_rate= PARTICLE_FADE_RATE):
         for i in range(particle_count):
-            particle = Particle()
+            particle = Particle(fade= fade_rate)
             particle.position = pos.list
             self.explosions_list.append(particle)
 
         smoke = Smoke(50)
         smoke.position = pos.list
         self.explosions_list.append(smoke)
+
+system = ParticleSystem()
