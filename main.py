@@ -7,6 +7,7 @@ import math
 import random
 import helpers
 from weapons import *
+import particles
 
 
 enemies = []
@@ -293,6 +294,10 @@ class Window(arcade.Window):
             deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
         self.setup()
 
+        # PARTIVCLES
+        self.particle_system = particles.ParticleSystem()
+
+
     def setup(self):
         global enemies, barriers
         enemies.clear()
@@ -347,6 +352,7 @@ class Window(arcade.Window):
             bullet_sprite.parent.die()
             enemy_sprite = sprite_from_arbiter(arbiter, 1)
             enemy_sprite.parent.health -= bullet_sprite.parent.damage
+            self.particle_system.create_explosion(Vec2(*bullet_sprite.position), 50)
 
         def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             player_sprite = sprite_from_arbiter(arbiter, 0)
@@ -394,6 +400,7 @@ class Window(arcade.Window):
 
     def all_draw(self):
         bc.sprite_all_draw.draw()
+        self.particle_system.draw()
 
     def draw_ui(self):
         self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
@@ -458,6 +465,9 @@ class Window(arcade.Window):
 
     def on_update(self, dt: float):
         bc.phys.step(1/60)
+        
+        self.particle_system.update(dt)
+
         self.player.update(dt)
         if self.player.health <= 0:
             self.setup()

@@ -102,14 +102,14 @@ class ParticleSystem:
     def __init__(self):
         self.explosions_list = arcade.SpriteList()
 
-    def on_draw(self):
+    def draw(self):
         self.explosions_list.draw()
 
-    def on_update(self, dt: float):
+    def update(self, dt: float):
         self.explosions_list.update(dt)
 
-    def create_explosion(self, pos: Vec2):
-        for i in range(PARTICLE_COUNT):
+    def create_explosion(self, pos: Vec2, particle_count= PARTICLE_COUNT):
+        for i in range(particle_count):
             particle = Particle()
             particle.position = pos.list
             self.explosions_list.append(particle)

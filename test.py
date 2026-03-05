@@ -1,318 +1,288 @@
 """
-Example of Pymunk Physics Engine
-Top-down
+Sprite Explosion
+
+Simple program to show creating explosions with sprites.
+There are more performant ways to do this, but for simple games this
+is a good way to get started.
+
+Artwork from https://kenney.nl
 
 If Python and Arcade are installed, this example can be run from the command line with:
-python -m arcade.examples.pymunk_demo_top_down
+python -m arcade.examples.sprite_explosion_particles
 """
-import math
 import random
+import math
 import arcade
-from arcade.pymunk_physics_engine import PymunkPhysicsEngine
 
-WINDOW_TITLE = "PyMunk Top-Down"
 SPRITE_SCALING_PLAYER = 0.5
-MOVEMENT_SPEED = 5
+SPRITE_SCALING_COIN = 0.3
+SPRITE_SCALING_LASER = 0.8
+ENEMY_COUNT = 50
 
-SPRITE_IMAGE_SIZE = 128
-SPRITE_SIZE = int(SPRITE_IMAGE_SIZE * SPRITE_SCALING_PLAYER)
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
+WINDOW_TITLE = "Sprite Explosion Example"
 
-WINDOW_WIDTH = SPRITE_SIZE * 15
-WINDOW_HEIGHT = SPRITE_SIZE * 10
+BULLET_SPEED = 5
 
-# Physics force used to move the player. Higher number, faster accelerating.
-PLAYER_MOVE_FORCE = 4000
-BULLET_MOVE_FORCE = 2500
+# --- Explosion Particles Related
+
+# How fast the particle will accelerate down. Make 0 if not desired
+PARTICLE_GRAVITY = 0.00
+PARTICLE_FADE_RATE = 8
+PARTICLE_MIN_SPEED = 2.5
+PARTICLE_SPEED_RANGE = 2.5
+PARTICLE_COUNT = 100
+PARTICLE_RADIUS = 3
+
+# Possible particle colors
+PARTICLE_COLORS = [arcade.color.ALIZARIN_CRIMSON,
+                   arcade.color.LAVA,
+                   arcade.color.LAVA,
+                   arcade.color.LAVA,
+                   arcade.color.KU_CRIMSON,
+                   arcade.color.DARK_TANGERINE]
+
+# Chance we'll flip the texture to white and make it 'sparkle'
+PARTICLE_SPARKLE_CHANCE = 0.015
+
+# --- Smoke
+# Note: Adding smoke trails makes for a lot of sprites and can slow things
+# down. If you want a lot, it will be necessary to move processing to GPU
+# using transform feedback. If to slow, just get rid of smoke.
+SMOKE_START_SCALE = 0.25
+SMOKE_EXPANSION_RATE = 0.03
+SMOKE_FADE_RATE = 7
+SMOKE_RISE_RATE = 0.5
+SMOKE_CHANCE = 0.25
+
+
+class Smoke(arcade.SpriteCircle):
+    """Particle with smoke like behavior."""
+    def __init__(self, size):
+        super().__init__(size, arcade.color.LIGHT_GRAY, soft=True)
+        self.change_y = SMOKE_RISE_RATE
+        self.scale = SMOKE_START_SCALE
+
+    def update(self, delta_time: float = 1/60):
+        """Update this particle"""
+        # Take delta_time into account
+        time_step = 60 * delta_time
+
+        if self.alpha <= PARTICLE_FADE_RATE:
+            # Remove faded out particles
+            self.remove_from_sprite_lists()
+        else:
+            # Update values
+            self.alpha -= int(SMOKE_FADE_RATE * time_step)
+            self.center_x += self.change_x * time_step
+            self.center_y += self.change_y * time_step
+            self.add_scale(SMOKE_EXPANSION_RATE * time_step)
+
+
+class Particle(arcade.SpriteCircle):
+    """ Explosion particle"""
+    def __init__(self):
+        """
+        Simple particle sprite based on circle sprite.
+        """
+        # Make the particle
+        super().__init__(PARTICLE_RADIUS, random.choice(PARTICLE_COLORS))
+
+        # Set direction/speed
+        speed = random.random() * PARTICLE_SPEED_RANGE + PARTICLE_MIN_SPEED
+        direction = random.randrange(360)
+        self.change_x = math.sin(math.radians(direction)) * speed
+        self.change_y = math.cos(math.radians(direction)) * speed
+
+    def update(self, delta_time: float = 1 / 60):
+        """Update the particle"""
+        # Take delta_time into account
+        time_step = 60 * delta_time
+
+        if self.alpha == 0:
+            # Faded out, remove
+            self.remove_from_sprite_lists()
+        else:
+            # Gradually fade out the particle. Don't go below 0
+            self.alpha = max(0, self.alpha - PARTICLE_FADE_RATE)
+            # Move the particle
+            self.center_x += self.change_x * time_step
+            self.center_y += self.change_y * time_step
+            self.change_y -= PARTICLE_GRAVITY * time_step
+
+            # Should we sparkle this?
+            if random.random() <= PARTICLE_SPARKLE_CHANCE:
+                self.alpha = 255
+                self.color = arcade.color.WHITE
+
+            # Leave a smoke particle?
+            if random.random() <= SMOKE_CHANCE:
+                smoke = Smoke(5)
+                smoke.position = self.position
+                # Add a smoke particle to the spritelist this sprite is in
+                self.sprite_lists[0].append(smoke)
 
 
 class GameView(arcade.View):
+    """ Main application class. """
+
     def __init__(self):
-        """ Init """
+        """ Initializer """
+        # Call the parent class initializer
         super().__init__()
 
-        self.background_color = arcade.color.AMAZON
-
-        self.player_list = None
-        self.wall_list = None
-        self.bullet_list = None
-        self.rock_list = None
-        self.gem_list = None
-        self.player_sprite = None
-        self.physics_engine: PymunkPhysicsEngine | None = None
-
-        # Track the current state of what key is pressed
-        self.left_pressed = False
-        self.right_pressed = False
-        self.up_pressed = False
-        self.down_pressed = False
-
-    def setup(self):
-        """ Set up everything """
-        # Create the sprite lists
+        # Variables that will hold sprite lists
         self.player_list = arcade.SpriteList()
-        self.wall_list = arcade.SpriteList()
+        self.enemy_list = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
-        self.rock_list = arcade.SpriteList()
-        self.gem_list = arcade.SpriteList()
+        self.explosions_list = arcade.SpriteList()
 
-        # Set up the player
+        # Set up the player info. Image from kenney.nl
         self.player_sprite = arcade.Sprite(
-            ":resources:images/animated_characters/female_person/femalePerson_idle.png",
-            scale=SPRITE_SCALING_PLAYER)
-        self.player_sprite.center_x = 250
-        self.player_sprite.center_y = 250
+            ":resources:images/space_shooter/playerShip2_orange.png",
+            scale=SPRITE_SCALING_PLAYER,
+        )
+        self.player_sprite.center_x = 50
+        self.player_sprite.center_y = 70
         self.player_list.append(self.player_sprite)
 
-        # Set up the walls
-        for x in range(0, WINDOW_WIDTH + 1, SPRITE_SIZE):
-            wall = arcade.Sprite(":resources:images/tiles/grassCenter.png",
-                                 scale=SPRITE_SCALING_PLAYER)
-            wall.center_x = x
-            wall.center_y = 0
-            self.wall_list.append(wall)
+        self.score = 0
 
-            wall = arcade.Sprite(":resources:images/tiles/grassCenter.png",
-                                 scale=SPRITE_SCALING_PLAYER)
-            wall.center_x = x
-            wall.center_y = WINDOW_HEIGHT
-            self.wall_list.append(wall)
+        # Don't show the mouse cursor
+        self.window.set_mouse_visible(False)
 
-        # Set up the walls
-        for y in range(SPRITE_SIZE, WINDOW_HEIGHT, SPRITE_SIZE):
-            wall = arcade.Sprite(":resources:images/tiles/grassCenter.png",
-                                 scale=SPRITE_SCALING_PLAYER)
-            wall.center_x = 0
-            wall.center_y = y
-            self.wall_list.append(wall)
+        # Load sounds. Sounds from kenney.nl
+        self.gun_sound = arcade.sound.load_sound(":resources:sounds/laser2.wav")
+        self.hit_sound = arcade.sound.load_sound(":resources:sounds/explosion2.wav")
 
-            wall = arcade.Sprite(":resources:images/tiles/grassCenter.png",
-                                 scale=SPRITE_SCALING_PLAYER)
-            wall.center_x = WINDOW_WIDTH
-            wall.center_y = y
-            self.wall_list.append(wall)
+        self.background_color = arcade.color.BLACK
+        self.score_display = arcade.Text("", 10, 20, arcade.color.WHITE, 14)
 
-        # Add some movable rocks
-        for x in range(SPRITE_SIZE * 2, SPRITE_SIZE * 13, SPRITE_SIZE):
-            rock = random.randrange(4) + 1
-            item = arcade.Sprite(f":resources:images/space_shooter/meteorGrey_big{rock}.png",
-                                 scale=SPRITE_SCALING_PLAYER)
-            item.center_x = x
-            item.center_y = 400
-            self.rock_list.append(item)
+        self.spawn_enemies()
 
-        # Add some movable coins
-        for x in range(SPRITE_SIZE * 2, SPRITE_SIZE * 13, SPRITE_SIZE):
-            items = [":resources:images/items/gemBlue.png",
-                     ":resources:images/items/gemRed.png",
-                     ":resources:images/items/coinGold.png",
-                     ":resources:images/items/keyBlue.png"]
-            item_name = random.choice(items)
-            item = arcade.Sprite(item_name,
-                                 scale=SPRITE_SCALING_PLAYER)
-            item.center_x = x
-            item.center_y = 300
-            self.gem_list.append(item)
+    def reset(self):
+        """Restart the game"""
+        # Reset score
+        self.score = 0
 
-        # --- Pymunk Physics Engine Setup ---
+        self.enemy_list.clear()
+        self.bullet_list.clear()
+        self.explosions_list.clear()
 
-        # The default damping for every object controls the percent of velocity
-        # the object will keep each second. A value of 1.0 is no speed loss,
-        # 0.9 is 10% per second, 0.1 is 90% per second.
-        # For top-down games, this is basically the friction for moving objects.
-        # For platformers with gravity, this should probably be set to 1.0.
-        # Default value is 1.0 if not specified.
-        damping = 0.7
+        self.spawn_enemies()
 
-        # Set the gravity. (0, 0) is good for outer space and top-down.
-        gravity = (0, 0)
+    def spawn_enemies(self):
+        # Spawn enemies
+        for index in range(ENEMY_COUNT):
+            # Create the coin instance. Image from kenney.nl
+            enemy = arcade.Sprite(
+                ":resources:images/space_shooter/playerShip1_green.png",
+                scale=SPRITE_SCALING_COIN,
+                angle=180,
+                center_x=random.randrange(25, WINDOW_WIDTH - 25),
+                center_y=random.randrange(150, WINDOW_HEIGHT)
+            )
+            # Add the ship to the lists
+            self.enemy_list.append(enemy)
 
-        # Create the physics engine
-        self.physics_engine = PymunkPhysicsEngine(damping=damping,
-                                                  gravity=gravity)
+    def on_draw(self):
+        """
+        Render the screen.
+        """
+        # This command has to happen before we start drawing
+        self.clear()
 
-        def rock_hit_handler(sprite_a, sprite_b, arbiter, space, data):
-            """ Called for bullet/rock collision """
-            bullet_shape = arbiter.shapes[0]
-            bullet_sprite = self.physics_engine.get_sprite_for_shape(
-                bullet_shape)
-            bullet_sprite.remove_from_sprite_lists()
-            print("Rock")
+        # Draw all the sprites.
+        self.enemy_list.draw()
+        self.bullet_list.draw()
+        self.player_list.draw()
+        self.explosions_list.draw()
 
-        def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
-            """ Called for bullet/rock collision """
-            bullet_shape = arbiter.shapes[0]
-            bullet_sprite = self.physics_engine.get_sprite_for_shape(
-                bullet_shape)
-            bullet_sprite.remove_from_sprite_lists()
-            print("Wall")
+        # Render the text
+        self.score_display.text = f"Score: {self.score}"
+        self.score_display.draw()
 
-        self.physics_engine.add_collision_handler(
-            "bullet",
-            "rock",
-            post_handler=rock_hit_handler,
-        )
-        self.physics_engine.add_collision_handler(
-            "bullet",
-            "wall",
-            post_handler=wall_hit_handler,
-        )
-
-        # Add the player.
-        # For the player, we set the damping to a lower value, which increases
-        # the damping rate. This prevents the character from traveling too far
-        # after the player lets off the movement keys.
-        # Setting the moment to PymunkPhysicsEngine.MOMENT_INF prevents it from
-        # rotating.
-        # Friction normally goes between 0 (no friction) and 1.0 (high friction)
-        # Friction is between two objects in contact. It is important to remember
-        # in top-down games that friction moving along the 'floor' is controlled
-        # by damping.
-        self.physics_engine.add_sprite(self.player_sprite,
-                                       friction=0.6,
-                                       moment_of_inertia=PymunkPhysicsEngine.MOMENT_INF,
-                                       damping=0.01,
-                                       collision_type="player",
-                                       max_velocity=400)
-
-        # Create the walls.
-        # By setting the body type to PymunkPhysicsEngine.STATIC the walls can't
-        # move.
-        # Movable objects that respond to forces are PymunkPhysicsEngine.DYNAMIC
-        # PymunkPhysicsEngine.KINEMATIC objects will move, but are assumed to be
-        # repositioned by code and don't respond to physics forces.
-        # Dynamic is default.
-        self.physics_engine.add_sprite_list(self.wall_list,
-                                            friction=0.6,
-                                            collision_type="wall",
-                                            body_type=PymunkPhysicsEngine.STATIC)
-
-        # Create some boxes to push around.
-        # Mass controls, well, the mass of an object. Defaults to 1.
-        self.physics_engine.add_sprite_list(self.rock_list,
-                                            mass=2,
-                                            friction=0.8,
-                                            damping=0.1,
-                                            collision_type="rock")
-        # Create some boxes to push around.
-        # Mass controls, well, the mass of an object. Defaults to 1.
-        self.physics_engine.add_sprite_list(self.gem_list,
-                                            mass=0.5,
-                                            friction=0.8,
-                                            damping=0.4,
-                                            collision_type="rock")
+    def on_mouse_motion(self, x, y, dx, dy):
+        """
+        Called whenever the mouse moves.
+        """
+        self.player_sprite.center_x = x
 
     def on_mouse_press(self, x, y, button, modifiers):
-        """ Called whenever the mouse button is clicked. """
+        """
+        Called whenever the mouse button is clicked.
+        """
+        # Gunshot sound
+        arcade.sound.play_sound(self.gun_sound)
 
-        bullet = arcade.SpriteSolidColor(
-            width=5, height=5, color=arcade.color.RED)
+        # Create a bullet
+        bullet = arcade.Sprite(
+            ":resources:images/space_shooter/laserBlue01.png",
+            scale=SPRITE_SCALING_LASER,
+        )
+
+        # The image points to the right, and we want it to point up. So
+        # rotate it.
+        bullet.angle = 270
+
+        # Give it a speed
+        bullet.change_y = BULLET_SPEED
+
+        # Position the bullet
+        bullet.center_x = self.player_sprite.center_x
+        bullet.bottom = self.player_sprite.top
+
+        # Add the bullet to the appropriate lists
         self.bullet_list.append(bullet)
 
-        # Position the bullet at the player's current location
-        start_x = self.player_sprite.center_x
-        start_y = self.player_sprite.center_y
-        bullet.position = self.player_sprite.position
-
-        # Get from the mouse the destination location for the bullet
-        # IMPORTANT! If you have a scrolling screen, you will also need
-        # to add in self.view_bottom and self.view_left.
-        dest_x = x
-        dest_y = y
-
-        # Do math to calculate how to get the bullet to the destination.
-        # Calculation the angle in radians between the start points
-        # and end points. This is the angle the bullet will travel.
-        x_diff = dest_x - start_x
-        y_diff = dest_y - start_y
-        angle = math.atan2(y_diff, x_diff)
-
-        force = [math.cos(angle), math.sin(angle)]
-        size = max(self.player_sprite.width, self.player_sprite.height) / 2
-
-        bullet.center_x += size * force[0]
-        bullet.center_y += size * force[1]
-
-        self.physics_engine.add_sprite(bullet,
-                                       mass=0.1,
-                                       damping=1.0,
-                                       friction=0.6,
-                                       collision_type="bullet",
-                                       elasticity=0.9)
-
-        # Taking into account the angle, calculate our force.
-        force[0] *= BULLET_MOVE_FORCE
-        force[1] *= BULLET_MOVE_FORCE
-
-        self.physics_engine.apply_force(bullet, force)
-
-    def on_key_press(self, key, modifiers):
-        """Called whenever a key is pressed. """
-
-        if key == arcade.key.UP:
-            self.up_pressed = True
-        elif key == arcade.key.DOWN:
-            self.down_pressed = True
-        elif key == arcade.key.LEFT:
-            self.left_pressed = True
-        elif key == arcade.key.RIGHT:
-            self.right_pressed = True
-        elif key == arcade.key.SPACE:
-            bullet = arcade.SpriteSolidColor(9, 9, arcade.color.RED)
-            bullet.position = self.player_sprite.position
-            bullet.center_x += 30
-            self.bullet_list.append(bullet)
-            self.physics_engine.add_sprite(bullet,
-                                           mass=0.2,
-                                           damping=1.0,
-                                           friction=0.6,
-                                           collision_type="bullet")
-            force = (3000, 0)
-            self.physics_engine.apply_force(bullet, force)
-
-    def on_key_release(self, key, modifiers):
-        """Called when the user releases a key. """
-
-        if key == arcade.key.UP:
-            self.up_pressed = False
-        elif key == arcade.key.DOWN:
-            self.down_pressed = False
-        elif key == arcade.key.LEFT:
-            self.left_pressed = False
-        elif key == arcade.key.RIGHT:
-            self.right_pressed = False
+    def on_key_press(self, symbol: int, modifiers: int):
+        if symbol == arcade.key.R:
+            self.reset()
+        # Close the window
+        elif symbol == arcade.key.ESCAPE:
+            self.window.close()
 
     def on_update(self, delta_time):
         """ Movement and game logic """
 
-        # Calculate speed based on the keys pressed
-        self.player_sprite.change_x = 0
-        self.player_sprite.change_y = 0
+        # Call update on bullet sprites
+        self.bullet_list.update(delta_time)
+        self.explosions_list.update(delta_time)
 
-        if self.up_pressed and not self.down_pressed:
-            force = (0, PLAYER_MOVE_FORCE)
-            self.physics_engine.apply_force(self.player_sprite, force)
-        elif self.down_pressed and not self.up_pressed:
-            force = (0, -PLAYER_MOVE_FORCE)
-            self.physics_engine.apply_force(self.player_sprite, force)
-        if self.left_pressed and not self.right_pressed:
-            self.player_sprite.change_x = -MOVEMENT_SPEED
-            force = (-PLAYER_MOVE_FORCE, 0)
-            self.physics_engine.apply_force(self.player_sprite, force)
-        elif self.right_pressed and not self.left_pressed:
-            force = (PLAYER_MOVE_FORCE, 0)
-            self.physics_engine.apply_force(self.player_sprite, force)
+        # Loop through each bullet
+        for bullet in self.bullet_list:
 
-        # --- Move items in the physics engine
-        self.physics_engine.step()
+            # Check this bullet to see if it hit a coin
+            hit_list = arcade.check_for_collision_with_list(bullet, self.enemy_list)
 
-    def on_draw(self):
-        """ Draw everything """
-        self.clear()
-        self.wall_list.draw()
-        self.bullet_list.draw()
-        self.rock_list.draw()
-        self.gem_list.draw()
-        self.player_list.draw()
+            # If it did...
+            if len(hit_list) > 0:
+
+                # Get rid of the bullet
+                bullet.remove_from_sprite_lists()
+
+            # For every coin we hit, add to the score and remove the coin
+            for coin in hit_list:
+                # Make an explosion
+                for i in range(PARTICLE_COUNT):
+                    particle = Particle()
+                    particle.position = coin.position
+                    self.explosions_list.append(particle)
+
+                smoke = Smoke(50)
+                smoke.position = coin.position
+                self.explosions_list.append(smoke)
+
+                coin.remove_from_sprite_lists()
+                self.score += 1
+
+                # Hit Sound
+                arcade.sound.play_sound(self.hit_sound)
+
+            # If the bullet flies off-screen, remove it.
+            if bullet.bottom > WINDOW_HEIGHT:
+                bullet.remove_from_sprite_lists()
 
 
 def main():
@@ -320,9 +290,8 @@ def main():
     # Create a window class. This is what actually shows up on screen
     window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
 
-    # Create and setup the GameView
+    # Create the GameView
     game = GameView()
-    game.setup()
 
     # Show GameView on screen
     window.show_view(game)
