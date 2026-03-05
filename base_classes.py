@@ -8,7 +8,6 @@ from arcade.pymunk_physics_engine import PymunkPhysicsEngine
 sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
 types_draw_list = []
-walls = arcade.SpriteList()
 
 phys = PymunkPhysicsEngine((0, 0), 0.7)
 
