@@ -316,6 +316,7 @@ class Window(arcade.Window):
             object = getattr(other, "parent", other)
             if hasattr(zone, "zone_damage") and hasattr(object, "health"):
                 object.health -= zone.zone_damage * self.delta_time
+            return True
 
 
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
@@ -328,19 +329,28 @@ class Window(arcade.Window):
             self.particle_system.create_explosion(Vec2(*bullet_sprite.position), 50)
 
         def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
-            player_sprite = sprite_from_arbiter(arbiter, 0)
-            if hasattr(player_sprite, "parent"):
-                player = player_sprite.parent
-                enemy = sprite_from_arbiter(arbiter, 1)
-                player.take_damage(enemy.parent.damage, enemy.parent)
-                self.health_bar.value = player.health
+            if hasattr(sprite_a.parent, "take_damage"):
+                player_sprite = sprite_a
+                other_sprite = sprite_b
+            elif hasattr(sprite_b.parent, "take_damage"):
+                player_sprite = sprite_b
+                other_sprite = sprite_a
+            else:
+                return True
+            player = player_sprite.parent
+            # Get damage from the other sprite (enemy or enemy bullet)
+            damage = getattr(other_sprite.parent, "damage", 0)
+            source = getattr(other_sprite, "parent", other_sprite)
+            player.take_damage(damage, source)
+            self.health_bar.value = player.health
+            return True
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/wall collision """
             # TODO add checks for types
             bullet_sprite = sprite_from_arbiter(arbiter, 0)
-            # bullet_sprite.remove_from_sprite_lists()
-            # bullet_sprite.parent.die()
+            bullet_sprite.remove_from_sprite_lists()
+            bullet_sprite.parent.die()
 
         bc.phys.add_collision_handler(
             "Player",
@@ -357,6 +367,12 @@ class Window(arcade.Window):
             "Wall",
             post_handler=wall_hit_handler
         )
+
+        bc.phys.add_collision_handler(
+            "EnemyBullet",
+            "Wall",
+            post_handler=wall_hit_handler
+        )
         bc.phys.add_collision_handler(
                 "DamageZone",
                 "Player",
@@ -369,6 +385,11 @@ class Window(arcade.Window):
                 begin_handler=damage_zone_handler
                 )
 
+        bc.phys.add_collision_handler(
+                "Player",
+                "EnemyBullet",
+                post_handler= en_player_hit_handler
+                )
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
         self.pix.resize(width, height)
