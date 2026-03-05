@@ -91,6 +91,9 @@ class Wearpon:
         self.bullets = []
         self.update(0)
 
+    def draw(self, x, y):
+        arcade.draw_text(self.__repr__(), x, y)
+
     def __repr__(self):
         return self.__class__.__name__
 

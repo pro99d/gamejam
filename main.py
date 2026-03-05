@@ -102,25 +102,25 @@ class InteractiveEntity(bc.Entity):
 
 class Item:
     def __init__(self, pos: Vec2, item: int):
-
+        self.pos = pos
         self.player_entered = False
         self.item = item
 
         def on_player_exit(*_):
-            self.player_entered = False
+            pass
+            # self.player_entered = False
 
         def on_player_enter(trig, player, *_):
             self.player_entered = True
             player = player.parent
-            if self.item <= 5: # weapon count - 1
-                player.available_weapons.append(player.weapon_list[self.item])
-            else:
-                player.items.append(self.item)
-                player.update_items()
+            player.items.append(self.item)
+            player.update_items()
 
             self.trigger.die()
 
         self.trigger = Trigger(on_player_enter, on_player_exit, pos, 10)
+    def draw(self):
+        arcade.draw_text(f"item {self.item}", *self.pos.list)
 
 
 @dataclass
@@ -157,7 +157,7 @@ class Enemy(bc.Entity):
             at = math.atan2(dp.x, dp.y)
             self.angle = math.degrees(at)
 
-            speed = 1000
+            speed = 1300
 
             self.velocity = 1*Vec2(math.sin(at), math.cos(at)) * speed
             bc.phys.apply_force(self.rect, self.velocity.list)
@@ -175,7 +175,8 @@ class Player(bc.Entity):
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
             self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
         self.active_weapon_sprite = arcade.SpriteList()
-        self.available_weapons = [self.weapon_list[0], self.weapon_list[1]]
+        # self.available_weapons = self.weapon_list
+        self.available_weapons = [self.weapon_list[0]]
         self.health = 50
         self.rect.parent = self
         self.last_damage = 0
@@ -185,8 +186,8 @@ class Player(bc.Entity):
 
     def update_items(self):
         for item in self.items:
-            if item in self.weapon_list:
-                self.available_weapons.append(item)
+            if item < 5:
+                self.available_weapons.append(self.weapon_list[item])
                 self.items.remove(item)
 
     def set_angle(self, mouse_pos: Vec2):
@@ -305,6 +306,7 @@ class Window(arcade.Window):
         self.test_int = InteractiveEntity(Vec2(180, 0))
         self.level = helpers.LevelLoader.load_level("level.lvl")
         self.player = Player(self.level.spawn.pos)
+        self.item_2 = Item(Vec2(-200, 0), 1)
         for wall in self.level.walls:
             walls.append(Wall(wall.pos, wall.size).rect)
         
@@ -325,7 +327,7 @@ class Window(arcade.Window):
 
         self.inventory_pos = Vec2(10, self.height-85)
         pos = self.get_world_from_screen(self.inventory_pos)
-        items = [WeapDrawItem(i.__repr__()) for i in self.player.available_weapons]
+        items = self.player.available_weapons
         self.item_bar = bc.ItemBar(pos, items, 50, 10)
 
     def get_world_from_screen(self, pos):
@@ -411,7 +413,8 @@ class Window(arcade.Window):
             self.ammo_indicator["reload"] = reload
         else:
             self.ammo_indicator["reload"] = 1
-
+        if not self.item_2.player_entered:
+            self.item_2.draw()
         # arcade.draw_text(
             # f"bullets left: {bullets}", name_pos.x, name_pos.y - 65)
         # if bullets == 0:
