@@ -8,10 +8,8 @@ import random
 import helpers
 from weapons import *
 import particles
-
-
-enemies = []
-walls = arcade.SpriteList()
+from enemy_types import *
+from base_classes import walls
 
 
 @dataclass
@@ -129,43 +127,6 @@ class WeapDrawItem:
     name: str
     def draw(self, x, y):
         arcade.draw_text(self.name, x, y)
-
-class Enemy(bc.Entity):
-    def __init__(self, pos: Vec2, target: bc.Entity):
-        super().__init__(
-            pos, Vec2(45, 45), (155, 0, 0),
-            collision_type="Enemy",
-            friction=0.3
-        )
-        self.target = target
-        self.health = 100
-        self.inv = False
-        self.damage = 25
-        self.type_ = 1
-        self.rect.parent = self
-
-    def update(self, dt):
-        super().update(dt)
-
-        if self.health <= 0:
-            self.die()
-            enemies.remove(self)
-            return
-
-        # Direct chase toward player
-        dp = self.target.pos - self.pos
-        if dp.magnitude > 0.01:
-            at = math.atan2(dp.x, dp.y)
-            self.angle = math.degrees(at)
-
-            speed = 1300
-
-            self.velocity = 1*Vec2(math.sin(at), math.cos(at)) * speed
-            bc.phys.apply_force(self.rect, self.velocity.list)
-
-    def draw(self):
-        pass
-
 
 class Player(bc.Entity):
     def __init__(self, pos: Vec2):
@@ -344,6 +305,14 @@ class Window(arcade.Window):
             shape = arbiter.shapes[num]
             sprite = bc.phys.get_sprite_for_shape(shape)
             return sprite
+
+        def damage_zone_handler(sprite_a, sprite_b, arbiter, space, data):
+            """called for player/enemy collision with damage zone"""
+            zone = sprite_a
+            object = sprite_b
+            if hasattr(zone, "zone_damage") and hasattr(object, "health"):
+                pass
+                
 
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/enemy collision """
