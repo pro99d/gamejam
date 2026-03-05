@@ -348,10 +348,11 @@ class Window(arcade.Window):
 
         def en_player_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             player_sprite = sprite_from_arbiter(arbiter, 0)
-            player = player_sprite.parent
-            enemy = sprite_from_arbiter(arbiter, 1)
-            player.take_damage(enemy.parent.damage, enemy.parent)
-            self.health_bar.value = player.health
+            if hasattr(player_sprite, "parent"):
+                player = player_sprite.parent
+                enemy = sprite_from_arbiter(arbiter, 1)
+                player.take_damage(enemy.parent.damage, enemy.parent)
+                self.health_bar.value = player.health
 
         def wall_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/wall collision """
