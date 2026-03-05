@@ -272,6 +272,9 @@ class Window(arcade.Window):
         self.bg = helpers.Shader(
             "shaders/bg.glsl", self.ctx, w=self.width, h=self.height)
 
+        self.ammo_indicator = helpers.Shader("shaders/ammo_left.glsl", self.ctx, w=self.width, h=self.height)
+        self.ammo_indicator["reload"] = 1
+
         self.setup_collision_handlers()
 
         self.vig_alp = 1.5
@@ -377,10 +380,12 @@ class Window(arcade.Window):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
         self.pix.resize(width, height)
         self.screen_size = Vec2(width, height)
+        self.ammo_indicator["start_pos"] = [10, self.height-85]
 
         self.vig.resize(width, height)
         # self.bg["screen_size"] = (width, height)
         self.bg.resize(width, height)
+        self.ammo_indicator.resize(width, height)
 
         self.camera = arcade.Camera2D()
 
@@ -398,11 +403,19 @@ class Window(arcade.Window):
         name = weapon.__repr__()
         # arcade.draw_text(f"Weapon: {name}", name_pos.x, name_pos.y)
         bullets = weapon.bul_count_now
-        arcade.draw_text(
-            f"bullets left: {bullets}", name_pos.x, name_pos.y - 65)
+        self.ammo_indicator["repeat_count"] = bullets
         if bullets == 0:
-            arcade.draw_text(
-                f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 85)
+            self.ammo_indicator["repeat_count"] = weapon.prop.bullet_count
+            reload = (time.time() - weapon.last_shot)/weapon.prop.reload_time
+            self.ammo_indicator["reload"] = reload
+        else:
+            self.ammo_indicator["reload"] = 1
+
+        # arcade.draw_text(
+            # f"bullets left: {bullets}", name_pos.x, name_pos.y - 65)
+        # if bullets == 0:
+            # arcade.draw_text(
+                # f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 85)
         self.item_bar.bottom_left_pos = self.get_world_from_screen(self.inventory_pos)
 
         number = len(self.player.available_weapons)
@@ -424,13 +437,17 @@ class Window(arcade.Window):
         self.vig.clear()
         self.pix.clear()
         self.bg.clear()
-        with self.vig:
-            with self.pix:
-                self.bg.draw()
-                self.all_draw()
-            self.pix.draw()
-        self.vig.draw()
-        self.draw_ui()
+        self.ammo_indicator.clear()
+        
+        with self.ammo_indicator:
+            with self.vig:
+                with self.pix:
+                    self.bg.draw()
+                    self.all_draw()
+                self.pix.draw()
+            self.vig.draw()
+            self.draw_ui()
+        self.ammo_indicator.draw()
         # self.tex.use(0)
         # self.quad_fs.render(self.pixelation)
         # self.quad_fs.render(self.vignette)
