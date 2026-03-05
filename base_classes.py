@@ -9,6 +9,7 @@ sprite_all_draw = arcade.SpriteList()
 waiting_list: list[arcade.SpriteSolidColor] = []
 types_draw_list = []
 walls = arcade.SpriteList()
+damage_zones = []
 
 phys = PymunkPhysicsEngine((0, 0), 0.7)
 
@@ -322,6 +323,23 @@ class ItemBar:
                     border_x, border_y, border_size, border_size, self.color_active, 3
                 )
 
+class DamageZone(arcade.SpriteCircle):
+    def __init__(self, pos: Vec2, lifetime: float, damage: float, size: int):
+        self.max_lifetime = lifetime
+        self.lifetime = 0
+        self.zone_damage = damage
+        super().__init__(size, (0, 0, 0, 0), False, *pos.list)
+        phys.add_sprite(self, collision_type= "DamageZone")
+        shape = phys.get_physics_object(self)
+        shape.shape.sensor = True
+        damage_zones.append(self)
+    
+    def update(self, dt):
+        super().update(dt)
+        self.lifetime += dt
+        if self.lifetime >= self.max_lifetime:
+            damage_zones.remove(self)
+            phys.remove_sprite(self)
 
 if __name__ == "__main__":
     e = Entity(Vec2(0, 0), Vec2(1, 1), [0, 0, 0])

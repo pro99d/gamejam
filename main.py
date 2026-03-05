@@ -253,11 +253,10 @@ class Window(arcade.Window):
         deadzone_size = 00
         self.camera_deadzone = Vec2(
             deadzone_size*aspect_ratio, deadzone_size/aspect_ratio)
-        self.setup()
-
         # PARTIVCLES
         self.particle_system = particles.ParticleSystem()
 
+        self.setup()
 
     def setup(self):
         global enemies, barriers
@@ -277,7 +276,7 @@ class Window(arcade.Window):
             walls.append(Wall(wall.pos, wall.size).rect)
         
         for enemy in self.level.enemies:
-            e = Enemy(enemy.pos, self.player)
+            e = Enemy(enemy.pos, self.player, self.particle_system)
             enemies.append(e)
         self.camera = arcade.Camera2D(position=self.player.pos.list)
         self.camera_pos = self.player.pos
@@ -308,11 +307,16 @@ class Window(arcade.Window):
 
         def damage_zone_handler(sprite_a, sprite_b, arbiter, space, data):
             """called for player/enemy collision with damage zone"""
-            zone = sprite_a
-            object = sprite_b
+            if hasattr(sprite_a, "zone_damage"):
+                zone = sprite_a
+                other = sprite_b
+            else:
+                zone = sprite_b
+                other = sprite_a
+            object = getattr(other, "parent", other)
             if hasattr(zone, "zone_damage") and hasattr(object, "health"):
-                pass
-                
+                object.health -= zone.zone_damage * self.delta_time
+
 
         def enemy_hit_handler(sprite_a, sprite_b, arbiter, space, data):
             """ Called for bullet/enemy collision """
@@ -353,6 +357,17 @@ class Window(arcade.Window):
             "Wall",
             post_handler=wall_hit_handler
         )
+        bc.phys.add_collision_handler(
+                "DamageZone",
+                "Player",
+                begin_handler=damage_zone_handler
+                )
+
+        bc.phys.add_collision_handler(
+                "DamageZone",
+                "Enemy",
+                begin_handler=damage_zone_handler
+                )
 
     def on_resize(self, width: int, height: int):
         self.bloom = arcade.experimental.BloomFilter(width, height, 20)
@@ -391,11 +406,6 @@ class Window(arcade.Window):
             self.ammo_indicator["reload"] = 1
         if not self.item_2.player_entered:
             self.item_2.draw()
-        # arcade.draw_text(
-            # f"bullets left: {bullets}", name_pos.x, name_pos.y - 65)
-        # if bullets == 0:
-            # arcade.draw_text(
-                # f"reload {weapon.prop.reload_time - (time.time() - weapon.last_shot):.2f}", name_pos.x, name_pos.y - 85)
         self.item_bar.bottom_left_pos = self.get_world_from_screen(self.inventory_pos)
 
         number = len(self.player.available_weapons)
@@ -462,6 +472,8 @@ class Window(arcade.Window):
         self.vig["alpha"] = self.vig_alp
 
         self.health_bar.value = self.player.health
+        for zone in bc.damage_zones:
+            zone.update(dt)
 
     def on_key_press(self, key, *_):
         if key == arcade.key.Q:
