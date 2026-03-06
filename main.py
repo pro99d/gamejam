@@ -137,8 +137,8 @@ class Player(bc.Entity):
         self.weapon_list = [Pistol(self), Riffle(self), MachinePistols(
             self), Shotgun(self), Crossbow(self), SniperRiffle(self)]
         self.active_weapon_sprite = arcade.SpriteList()
-        # self.available_weapons = self.weapon_list
-        self.available_weapons = [self.weapon_list[0]]
+        self.available_weapons = self.weapon_list
+        # self.available_weapons = [self.weapon_list[0]]
         self.health = 50
         self.rect.parent = self
         self.last_damage = 0
@@ -276,7 +276,10 @@ class Window(arcade.Window):
             walls.append(Wall(wall.pos, wall.size).rect)
         
         for enemy in self.level.enemies:
-            e = Enemy(enemy.pos, self.player, self.particle_system)
+            if enemy.type_ == 1:
+                e = Kamikaze(enemy.pos, self.player, self.particle_system)
+            else:
+                raise NotImplementedError(f"enemy type {enemy.type_} is not implemented")
             enemies.append(e)
         self.camera = arcade.Camera2D(position=self.player.pos.list)
         self.camera_pos = self.player.pos
@@ -338,9 +341,8 @@ class Window(arcade.Window):
             else:
                 return True
             player = player_sprite.parent
-            # Get damage from the other sprite (enemy or enemy bullet)
-            damage = getattr(other_sprite.parent, "damage", 0)
-            source = getattr(other_sprite, "parent", other_sprite)
+            damage = other_sprite.parent.damage
+            source = other_sprite.parent
             player.take_damage(damage, source)
             self.health_bar.value = player.health
             return True
@@ -410,8 +412,6 @@ class Window(arcade.Window):
     def draw_ui(self):
         self.health_bar.update_pos(self.get_world_from_screen(Vec2(10, 10)))
         self.health_bar.draw()
-        for enemy in enemies:
-            enemy.draw()
 
         name_pos = self.get_world_from_screen(Vec2(10, self.height-15))
         weapon = self.player.available_weapons[self.player.weapon_number]

@@ -80,6 +80,7 @@ class TrooperRifle(Weapon):
                 )
         self.bul_class = Bullet
 
+
 class Enemy(bc.Entity):
     def __init__(self, pos: Vec2, target: bc.Entity, ps):
         super().__init__(
@@ -91,17 +92,11 @@ class Enemy(bc.Entity):
         self.health = 100
         self.inv = False
         self.damage = 25
-        self.type_ = 2
         self.ps = ps
         self.rect.parent = self
         self.explosion_time = 0
-        if self.type_ == 2:
-            self.weapon = TrooperRifle(self)
-            self.damage = self.weapon.prop.damage
-        # elif self.type
     
     def move_to_target(self):
-        # Direct chase toward player
         dp = self.target.pos - self.pos
         if dp.magnitude > 0.01:
             at = math.atan2(dp.x, dp.y)
@@ -109,41 +104,35 @@ class Enemy(bc.Entity):
             self.velocity = 1*Vec2(math.sin(at), math.cos(at)) * speed
             bc.phys.apply_force(self.rect, self.velocity.list)
 
-    def uni_die(self):
-        self.die()
-        enemies.remove(self)
-
-    def kamikaze(self):
-        if (self.target.pos - self.pos).magnitude < 500:
-            self.move_to_target()
-            if (self.pos - self.target.pos).magnitude < 65:
-                self.ps.create_explosion(self.pos)
-                bc.DamageZone(self.pos, 0.25, 1000, 80)
-                self.uni_die()
-    def trooper(self):
-        dist = (self.target.pos - self.pos).magnitude
-        if dist < 500:
-            if dist > 200:
-                self.move_to_target()
-            self.weapon.shoot()
+    def logic(self):
+        pass
 
     def update(self, dt):
         super().update(dt)
+        self.logic()
 
+
+class Kamikaze(Enemy):
+    def __init__(self, pos, target, ps):
+        super().__init__(pos, target, ps)
+    
+    
+    def logic(self):
+        self.move_to_target()
+        if (self.target.pos - self.pos).magnitude < 500:
+            self.move_to_target()
+            if (self.pos - self.target.pos).magnitude < 65:
+                self.die()
+        if self.health <= 0:
+            self.die()
+            return
         dp = self.target.pos - self.pos
         if dp.magnitude > 0.01:
             at = math.atan2(dp.x, dp.y)
             self.angle = math.degrees(at)
-        if self.type_ == 1:
-            self.kamikaze()
-        elif self.type_ == 2:
-            self.trooper()
-        else:
-            self.move_to_target()
-        if self.health <= 0:
-            self.uni_die()
-            return
-        self.weapon.update(dt)
 
-    def draw(self):
-        pass
+    def die(self):
+        self.ps.create_explosion(self.pos, 200, 8)
+        bc.DamageZone(self.pos, 0.5, 1000, 80)
+        super().die()
+        enemies.remove(self)
