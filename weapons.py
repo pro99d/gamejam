@@ -63,7 +63,7 @@ class Bullet(bc.Entity):
 
 
 @dataclass
-class WearponData:
+class WeaponData:
     reload_time: float
     bullet_count: int
     reload: float
@@ -72,11 +72,12 @@ class WearponData:
     size: Vec2
     lifetime: float
 
-class Wearpon:
+class Weapon:
     def __init__(self, parent: bc.Entity):
         self.parent = parent
         self.sprite = arcade.SpriteSolidColor(10, 50, 0, 0, arcade.color.GRAY)
-        self.prop = WearponData(
+        self.bul_class = Bullet
+        self.prop = WeaponData(
             bullet_count=6,
             reload=0.1,
             damage=15.0,
@@ -114,8 +115,7 @@ class Wearpon:
 
     def shoot(self):
         if (time.time() - self.last_shot >= self.prop.reload) and self.bul_count_now > 0:
-            bullet = Bullet(
-
+            bullet = self.bul_class(
                 pos=self.pos,
                 size=self.prop.size,
                 vel=1000,
@@ -136,10 +136,10 @@ class Wearpon:
             bullet.die()
 
 
-class Pistol(Wearpon):
+class Pistol(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prop = WearponData(
+        self.prop = WeaponData(
             reload_time=1.5,
             bullet_count=12,
             reload=0.3,
@@ -154,10 +154,10 @@ class Pistol(Wearpon):
         super().update(dt)
 
 
-class Riffle(Wearpon):
+class Riffle(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prod = WearponData(
+        self.prod = WeaponData(
             reload_time=2,
             bullet_count=5,
             reload=0.6,
@@ -172,10 +172,10 @@ class Riffle(Wearpon):
         super().update(dt)
 
 
-class MachinePistols(Wearpon):
+class MachinePistols(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prop = WearponData(
+        self.prop = WeaponData(
             reload_time=3,
             bullet_count=60,
             reload=0.08,
@@ -194,10 +194,10 @@ class MachinePistols(Wearpon):
         super().update(dt)
 
 
-class Shotgun(Wearpon):
+class Shotgun(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prop = WearponData(
+        self.prop = WeaponData(
             reload_time=3,
             bullet_count=5,
             reload=0.5,
@@ -231,10 +231,10 @@ class Shotgun(Wearpon):
         super().update(dt)
 
 
-class Crossbow(Wearpon):
+class Crossbow(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prop = WearponData(
+        self.prop = WeaponData(
             reload_time=1.5,
             bullet_count=1,
             reload=1.5,
@@ -249,10 +249,10 @@ class Crossbow(Wearpon):
         super().update(dt)
 
 
-class SniperRiffle(Wearpon):
+class SniperRiffle(Weapon):
     def __init__(self, parent):
         super().__init__(parent)
-        self.prop = WearponData(
+        self.prop = WeaponData(
             reload_time=2.0,
             bullet_count=1,
             reload=2.0,

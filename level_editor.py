@@ -4,6 +4,7 @@ from base_classes import Vec2
 import helpers
 from main import Wall, Enemy
 from base_classes import sprite_all_draw
+import random
 
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
@@ -30,7 +31,9 @@ class Window(arcade.Window):
             walls = []
             enemies = []
             for enemy in self.level.enemies:
-                enemies.append(Enemy(enemy.pos, 1))
+                e = Enemy(enemy.pos, None)
+                e.type_ = random.randint(1, 2)
+                enemies.append(e)
             self.level.enemies = enemies
             for wall in self.level.walls:
                 walls.append(Wall(wall.pos, wall.size))
